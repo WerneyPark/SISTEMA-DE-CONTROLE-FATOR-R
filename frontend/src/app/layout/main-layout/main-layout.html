@@ -1,0 +1,42 @@
+<div class="layout-wrapper">
+  <!-- Header Global -->
+  <header class="main-header">
+    <div class="header-left">
+      <div class="brand">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        <span>Fator R</span>
+      </div>
+      <nav class="main-nav">
+        <a routerLink="/home" routerLinkActive="active">Início</a>
+        <a routerLink="/simulador" routerLinkActive="active">Simulador</a>
+        <a routerLink="/empresas" routerLinkActive="active">Empresas</a>
+        <a routerLink="/parametros" routerLinkActive="active">Parâmetros da Empresa</a>
+        <a *ngIf="isAdmin" routerLink="/parametros-padrao" routerLinkActive="active">Parâmetros Padrão</a>
+        <a *ngIf="isAdmin" routerLink="/usuarios-admin" routerLinkActive="active">Usuários (Admin)</a>
+      </nav>
+    </div>
+    
+    <div class="header-right">
+      <div class="company-selector">
+        <span class="selector-label">Empresa Atual:</span>
+        <select [(ngModel)]="empresaSelecionadaId" (change)="onEmpresaChange()" class="header-select">
+          <option [ngValue]="null" disabled>Selecione...</option>
+          <option *ngFor="let emp of empresas" [value]="emp.id">{{ emp.razaoSocial }}</option>
+        </select>
+      </div>
+      <div class="user-info">
+        <span class="user-badge">{{ usuarioAtual.substring(0,2).toUpperCase() }}</span>
+        <button class="btn-logout" (click)="logout()" title="Sair">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Content Area -->
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

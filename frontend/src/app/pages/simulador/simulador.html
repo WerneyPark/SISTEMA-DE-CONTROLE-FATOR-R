@@ -1,0 +1,238 @@
+<div class="simulador-container">
+  <!-- Nenhuma empresa selecionada -->
+  <div class="welcome-state" *ngIf="!empresaSelecionada">
+    <div class="welcome-icon">
+      <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 5-5"/></svg>
+    </div>
+    <h2>Simulador Fator R</h2>
+    <p>Selecione uma empresa no menu superior para visualizar os cálculos.</p>
+  </div>
+
+  <!-- Erro -->
+  <div class="alert alert-error" *ngIf="erro">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+    <span>{{ erro }}</span>
+    <button class="btn-close" (click)="erro = null">&times;</button>
+  </div>
+
+  <!-- Conteúdo principal quando empresa selecionada -->
+  <div *ngIf="empresaSelecionada" class="content-grid">
+    <!-- Competência Selector -->
+    <div class="card competencia-card">
+      <div class="card-header">
+        <h3>Competência de Referência</h3>
+        <button class="btn btn-ghost" (click)="usarCompetenciaAtual()">
+          Mês Atual
+        </button>
+      </div>
+      <div class="competencia-form">
+        <div class="form-group">
+          <label for="mesRef">Mês</label>
+          <select id="mesRef" [(ngModel)]="mesReferencia" (change)="simular()">
+            <option *ngFor="let m of meses" [value]="m.valor">{{ m.nome }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="anoRef">Ano</label>
+          <input id="anoRef" type="number" [(ngModel)]="anoReferencia" (change)="simular()" min="2020" max="2030">
+        </div>
+      </div>
+    </div>
+
+    <!-- Gauge do Fator R -->
+    <div class="card gauge-card" *ngIf="simulacao">
+      <div class="card-header">
+        <h3>Fator R</h3>
+        <span class="anexo-badge" [class.anexo-iii]="simulacao.anexoAplicavel === 'Anexo III'" [class.anexo-v]="simulacao.anexoAplicavel === 'Anexo V'">
+          {{ simulacao.anexoAplicavel }}
+        </span>
+      </div>
+      <div class="gauge-container">
+        <div class="gauge">
+          <div class="gauge-bg"></div>
+          <div class="gauge-fill" [style.transform]="'rotate(' + getGaugeRotation() + 'deg)'" [style.border-color]="getGaugeColor()"></div>
+          <div class="gauge-center">
+            <span class="gauge-value" [style.color]="getGaugeColor()">{{ simulacao.percentualFatorR | number:'1.2-2' }}%</span>
+            <span class="gauge-label">Folha / Faturamento</span>
+          </div>
+        </div>
+      </div>
+      <div class="alert alert-warning" *ngIf="simulacao.alertaProximidadeLimite">
+        <span>{{ simulacao.mensagemAlerta }}</span>
+      </div>
+      <p class="gauge-message">{{ simulacao.mensagem }}</p>
+    </div>
+
+    <!-- Cards de resumo financeiro -->
+    <div class="summary-row" *ngIf="simulacao">
+      <div class="card summary-card">
+        <div class="summary-content">
+          <span class="summary-label">Faturamento (12m)</span>
+          <span class="summary-value">{{ formatCurrency(simulacao.totalFaturamento12Meses) }}</span>
+        </div>
+      </div>
+      <div class="card summary-card">
+        <div class="summary-content">
+          <span class="summary-label">Folha de Pagamento (12m)</span>
+          <span class="summary-value">{{ formatCurrency(simulacao.totalFolha12Meses) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparativo de Regimes -->
+    <div class="card comparativo-card" *ngIf="simulacao">
+      <div class="card-header">
+        <h3>Comparativo de Regimes</h3>
+        <span class="vantajoso-badge">Melhor: {{ simulacao.regimeMaisVantajoso }}</span>
+      </div>
+      
+      <div class="alert alert-warning" *ngIf="simulacao.mensagemFaixa6" style="margin-bottom: 16px;">
+        <span>{{ simulacao.mensagemFaixa6 }}</span>
+      </div>
+
+      <div class="comparativo-grid">
+        <div class="regime-box" [class.destaque]="simulacao.regimeMaisVantajoso === 'Simples Nacional'">
+          <h4>Simples ({{ simulacao.anexoAplicavel }})</h4>
+          <div style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">
+            RBT12: {{ formatCurrency(simulacao.rbt12) }}<br>
+            Enquadramento: <strong>{{ simulacao.faixaEncontrada }}ª Faixa</strong><br>
+            Alíquota Efetiva: {{ simulacao.aliquotaEfetivaSimplesNacional | number:'1.2-2' }}%
+          </div>
+          <span class="regime-valor">{{ formatCurrency(simulacao.valorEstimadoSimplesNacional) }}</span>
+        </div>
+        <div class="vs-divider"><span>VS</span></div>
+        <div class="regime-box" [class.destaque]="simulacao.regimeMaisVantajoso === 'Lucro Presumido'">
+          <h4>Lucro Presumido</h4>
+          <div style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">
+            Alíquota Efetiva: {{ simulacao.aliquotaEfetivaLucroPresumido | number:'1.2-2' }}%
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+              <div>PIS: <br><strong>{{ formatCurrency(simulacao.valorPis) }}</strong></div>
+              <div>COFINS: <br><strong>{{ formatCurrency(simulacao.valorCofins) }}</strong></div>
+              <div>ISS: <br><strong>{{ formatCurrency(simulacao.valorIss) }}</strong></div>
+              <div>CSLL: <br><strong>{{ formatCurrency(simulacao.valorCsll) }}</strong></div>
+              <div>IRPJ: <br><strong>{{ formatCurrency(simulacao.valorIrpj) }}</strong></div>
+              <div>Adic. IRPJ: <br><strong>{{ formatCurrency(simulacao.valorAdicionalIrpj) }}</strong></div>
+            </div>
+          </div>
+          <span class="regime-valor">{{ formatCurrency(simulacao.valorEstimadoLucroPresumido) }}</span>
+        </div>
+      </div>
+      <div class="economia-banner">
+        <span>Economia de: <strong>{{ formatCurrency(simulacao.economiaEstimada) }}/mês</strong></span>
+      </div>
+    </div>
+
+    <!-- Formulários de Lançamento -->
+    <div class="card lancamento-card">
+      <div class="card-header">
+        <h3>Lançamentos de Dados</h3>
+        <button class="btn btn-primary" (click)="toggleFormLancamento()">
+          {{ mostrarFormLancamento ? 'Esconder Formulários' : '+ Fazer Lançamentos' }}
+        </button>
+      </div>
+
+      <div class="lancamento-tabs" *ngIf="mostrarFormLancamento">
+        <div class="alert alert-success" *ngIf="lancamentoSucesso">
+          <span>{{ lancamentoSucesso }}</span>
+        </div>
+
+        <!-- Faturamento -->
+        <div class="form-section">
+          <h4>Registrar Faturamento</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Mês</label>
+              <select [(ngModel)]="lancamentoFaturamento.mes">
+                <option *ngFor="let m of meses" [value]="m.valor">{{ m.nome }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ano</label>
+              <input type="number" [(ngModel)]="lancamentoFaturamento.ano" min="2020" max="2030">
+            </div>
+            <div class="form-group" style="flex: 2;">
+              <label>Valor Bruto (R$)</label>
+              <input type="number" [(ngModel)]="lancamentoFaturamento.valor" step="0.01" min="0">
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-block" (click)="salvarFaturamento()">Salvar Faturamento</button>
+        </div>
+
+        <div class="divider-or" style="margin: 20px 0; border-top: 1px dashed rgba(255,255,255,0.1);"></div>
+
+        <!-- Folha -->
+        <div class="form-section">
+          <h4>Registrar Folha de Pagamento</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Mês</label>
+              <select [(ngModel)]="lancamentoFolha.mes">
+                <option *ngFor="let m of meses" [value]="m.valor">{{ m.nome }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ano</label>
+              <input type="number" [(ngModel)]="lancamentoFolha.ano" min="2020" max="2030">
+            </div>
+            <div class="form-group" style="flex: 2;">
+              <label>Valor Bruto (R$)</label>
+              <input type="number" [(ngModel)]="lancamentoFolha.valor" step="0.01" min="0">
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-block" (click)="salvarFolha()">Salvar Folha</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Histórico de Faturamento -->
+    <div class="card historico-card" *ngIf="simulacao?.historicoFaturamentos?.length">
+      <div class="card-header">
+        <h3>Histórico Base (Últimos 12 Meses + Atual)</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="historico-table">
+          <thead>
+            <tr>
+              <th>Competência</th>
+              <th class="text-right">Faturamento</th>
+              <th class="text-right">Folha de Pagamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of simulacao!.historicoFaturamentos">
+              <td>{{ item.competencia }}</td>
+              <td class="text-right">{{ formatCurrency(item.faturamento) }}</td>
+              <td class="text-right">{{ formatCurrency(item.folhaPagamento) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Projeções Futuras -->
+    <div class="card projecoes-card" *ngIf="projecoes && projecoes.length > 0">
+      <div class="card-header">
+        <h3>Projeções Futuras (Próximos 2 Meses)</h3>
+      </div>
+      <div class="projecoes-grid">
+        <div class="cenario-box" *ngFor="let cenario of projecoes" 
+             [class.cenario-otimista]="cenario.nomeCenario.includes('Otimista')"
+             [class.cenario-pessimista]="cenario.nomeCenario.includes('Pessimista')"
+             [class.cenario-neutro]="cenario.nomeCenario.includes('Neutro')">
+          <div class="cenario-header">
+            <h4>{{ cenario.nomeCenario }}</h4>
+            <span class="cenario-desc">{{ cenario.descricao }}</span>
+          </div>
+          <div class="mes-projecao" *ngFor="let mes of cenario.meses; let i = index">
+            <h5>Mês {{ i + 1 }} ({{ mes.competencia }})</h5>
+            <div class="projecao-detalhes">
+              <div class="proj-linha"><span>Faturamento:</span> <strong>{{ formatCurrency(mes.faturamentoEstimado) }}</strong></div>
+              <div class="proj-linha"><span>Fator R:</span> <strong>{{ mes.percentualFatorR | number:'1.2-2' }}% ({{ mes.anexoAplicavel }})</strong></div>
+              <div class="proj-linha destaque"><span>Simples Nacional:</span> <strong>{{ formatCurrency(mes.valorEstimadoSimplesNacional) }}</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

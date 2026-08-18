@@ -1,0 +1,35 @@
+<div class="empresas-container">
+  <div class="page-header">
+    <h2>Gerenciamento de Usuários (Admin)</h2>
+  </div>
+
+  <div *ngIf="loading" class="loading-state">
+    <p>Carregando usuários...</p>
+  </div>
+
+  <div *ngIf="!loading && usuarios.length === 0" class="empty-state">
+    <p>Nenhum usuário cadastrado.</p>
+  </div>
+
+  <div *ngIf="!loading && usuarios.length > 0" class="empresas-grid">
+    <div class="empresa-card" *ngFor="let usuario of usuarios">
+      <div class="empresa-icon">
+        {{ usuario.cpf.substring(0,2) }}
+      </div>
+      <div class="empresa-info">
+        <h3>CPF: {{ usuario.cpf }}</h3>
+        <p><strong>Tipo:</strong> {{ usuario.tipo === 'ADMINISTRADOR_CONTABIL' ? 'Administrador' : 'Usuário Empresa' }}</p>
+        
+        <div class="empresas-vinculadas" style="margin-top: 10px;">
+          <h4 style="color: #cbd5e1; font-size: 14px; margin-bottom: 5px;">Empresas Vinculadas:</h4>
+          <ul *ngIf="usuario.empresas.length > 0" style="padding-left: 20px; margin: 0; color: #94a3b8; font-size: 13px;">
+            <li *ngFor="let emp of usuario.empresas">
+              {{ emp.razaoSocial }} ({{ emp.cnpj }})
+            </li>
+          </ul>
+          <p *ngIf="usuario.empresas.length === 0" style="color: #64748b; font-size: 13px; margin: 0;">Nenhuma empresa vinculada</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

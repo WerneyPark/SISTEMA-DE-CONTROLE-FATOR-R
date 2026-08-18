@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentação Técnica - Sistema de Controle Fator R</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --bg-sidebar: #090d16;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --accent: #818cf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #06b6d4;
+      --code-bg: #0b1120;
+      --method-get: #10b981;
+      --method-post: #3b82f6;
+      --method-put: #f59e0b;
+      --method-delete: #ef4444;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.6;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    aside.sidebar {
+      width: 320px;
+      min-width: 320px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-header h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-header .version-tag {
+      font-size: 0.75rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      font-weight: 600;
+      margin-top: 4px;
+      display: inline-block;
+    }
+
+    .search-box {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .search-box input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+
+    .nav-links {
+      padding: 16px 0;
+      list-style: none;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-group-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      padding: 12px 20px 6px;
+      font-weight: 700;
+    }
+
+    .nav-links a {
+      display: flex;
+      align-items: center;
+      padding: 8px 20px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--primary);
+      background: rgba(56, 189, 248, 0.08);
+      border-left-color: var(--primary);
+    }
+
+    /* Main Content */
+    main.content {
+      flex: 1;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 40px 60px;
+      scroll-behavior: smooth;
+    }
+
+    .doc-container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* Typography & Sections */
+    section {
+      margin-bottom: 60px;
+      scroll-margin-top: 30px;
+    }
+
+    h2.section-title {
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h2.section-title .section-num {
+      background: var(--primary);
+      color: #0f172a;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    h3.sub-title {
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 30px 0 16px;
+    }
+
+    h4.inner-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin: 20px 0 10px;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      font-size: 0.95rem;
+    }
+
+    /* Cards & Grids */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h4 {
+      font-size: 1.1rem;
+      color: var(--text-main);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Tables */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin: 20px 0;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background: var(--bg-card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    thead th {
+      background: #111c2e;
+      color: var(--primary);
+      padding: 14px 18px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    tbody td {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-muted);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Code Blocks */
+    pre, code {
+      font-family: var(--font-mono);
+    }
+
+    code.inline-code {
+      background: var(--code-bg);
+      color: #38bdf8;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    pre.code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 0.875rem;
+      color: #e2e8f0;
+      margin: 16px 0;
+      position: relative;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .badge-get { background: rgba(16, 185, 129, 0.2); color: var(--method-get); border: 1px solid var(--method-get); }
+    .badge-post { background: rgba(59, 130, 246, 0.2); color: var(--method-post); border: 1px solid var(--method-post); }
+    .badge-put { background: rgba(245, 158, 11, 0.2); color: var(--method-put); border: 1px solid var(--method-put); }
+    .badge-delete { background: rgba(239, 68, 68, 0.2); color: var(--method-delete); border: 1px solid var(--method-delete); }
+    
+    .badge-primary { background: rgba(56, 189, 248, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+    .badge-secondary { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); border: 1px solid var(--text-dim); }
+
+    /* Formula Box */
+    .formula-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+      border: 1px solid #38bdf840;
+      border-left: 5px solid var(--primary);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .formula-math {
+      font-size: 1.2rem;
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      padding: 12px 16px;
+      background: var(--code-bg);
+      border-radius: 8px;
+      margin: 12px 0;
+      display: inline-block;
+      border: 1px solid var(--border-color);
+    }
+
+    .callout {
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-warning {
+      background: rgba(245, 158, 11, 0.1);
+      border-left-color: var(--warning);
+      color: #fbbf24;
+    }
+
+    .callout-info {
+      background: rgba(56, 189, 248, 0.1);
+      border-left-color: var(--primary);
+      color: #7dd3fc;
+    }
+
+    .callout-success {
+      background: rgba(16, 185, 129, 0.1);
+      border-left-color: var(--success);
+      color: #6ee7b7;
+    }
+
+    /* Diagram visual */
+    .arch-diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      margin: 24px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .arch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .arch-box {
+      flex: 1;
+      min-width: 220px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 18px;
+      text-align: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .arch-box.highlight {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .arch-arrow {
+      color: var(--accent);
+      font-weight: bold;
+      font-size: 1.4rem;
+      text-align: center;
+    }
+
+    /* Method Detail Box */
+    .method-spec {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 18px 0;
+    }
+
+    .method-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .method-name {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .param-list {
+      margin-top: 10px;
+      list-style-type: none;
+    }
+
+    .param-list li {
+      padding: 6px 0;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    }
+
+    .param-list li:last-child {
+      border-bottom: none;
+    }
+
+    .param-name {
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .param-type {
+      color: #818cf8;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+      body {
+        flex-direction: column;
+        height: auto;
+        overflow: auto;
+      }
+      aside.sidebar {
+        width: 100%;
+        min-width: 100%;
+        height: auto;
+        max-height: 50vh;
+      }
+      main.content {
+        height: auto;
+        padding: 24px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar / Navegação -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>📊 Fator R Docs</h1>
+      <span class="version-tag">v1.0.0 Production Ready</span>
+      <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 6px;">Documentação Técnica Exaustiva</p>
+    </div>
+
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="🔍 Buscar classes, métodos, rotas..." onkeyup="filtrarDocumentacao()">
+    </div>
+
+    <ul class="nav-links" id="navLinks">
+      <li class="nav-group-title">Visão Geral & Arquitetura</li>
+      <li><a href="#visao-geral">1. Visão Geral & Problema</a></li>
+      <li><a href="#arquitetura">2. Arquitetura e Fluxo do Sistema</a></li>
+      <li><a href="#arvore-arquivos">3. Mapeamento de Arquivos</a></li>
+
+      <li class="nav-group-title">Regras Fiscais & Algoritmos</li>
+      <li><a href="#formulas-matematicas">4. Fórmulas e Regras de Negócio</a></li>
+      <li><a href="#tabelas-tributarias">5. Tabelas Anexos III, V e LP</a></li>
+      <li><a href="#algoritmo-projecao">6. Algoritmo de Projeção</a></li>
+
+      <li class="nav-group-title">Backend (Java 21 / Spring Boot)</li>
+      <li><a href="#backend-domain">7. Entidades de Domínio</a></li>
+      <li><a href="#backend-dto">8. Data Transfer Objects (DTOs)</a></li>
+      <li><a href="#backend-repositories">9. Repositórios JPA</a></li>
+      <li><a href="#backend-services">10. Serviços & Lógica de Negócio</a></li>
+      <li><a href="#backend-controllers">11. Controllers REST</a></li>
+
+      <li class="nav-group-title">Frontend (Angular 21)</li>
+      <li><a href="#frontend-models">12. Interfaces TypeScript & Modelos</a></li>
+      <li><a href="#frontend-services">13. Serviços & RxJS State Management</a></li>
+      <li><a href="#frontend-components">14. Componentes & Views</a></li>
+      <li><a href="#frontend-routes">15. Roteamento & Guards</a></li>
+
+      <li class="nav-group-title">API REST & Rotas</li>
+      <li><a href="#api-endpoints">16. Catálogo Completo de Endpoints</a></li>
+
+      <li class="nav-group-title">DevOps & Execução</li>
+      <li><a href="#instalacao-execucao">17. Guia de Instalação e Execução</a></li>
+    </ul>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main class="content">
+    <div class="doc-container">
+
+      <!-- 1. Visão Geral -->
+      <section id="visao-geral">
+        <h2 class="section-title"><span class="section-num">1</span> Visão Geral & Problema de Negócio</h2>
+        <p>
+          O <strong>Sistema de Controle Fator R</strong> é uma solução corporativa full-stack desenvolvida para automação tributária e planejamento fiscal de empresas prestadoras de serviços enquadradas no <strong>Simples Nacional</strong> (conforme a Lei Complementar nº 123/2006 e resoluções do CGSN).
+        </p>
+        
+        <div class="card-grid">
+          <div class="card">
+            <h4>🎯 Problema Resolvido</h4>
+            <p>
+              Diversas atividades intelectuais e de serviços (como desenvolvimento de software, consultoria em TI, clínicas médicas, engenharia e arquitetura) são legalmente sujeitas ao mecanismo do <strong>Fator R</strong>. Se a proporção da folha salarial for igual ou superior a <strong>28%</strong> do faturamento dos últimos 12 meses, a empresa é tributada pelo <strong>Anexo III</strong> (alíquotas iniciais de 6,00%). Caso contrário, é tributada pelo <strong>Anexo V</strong> (alíquotas iniciais de 15,50%).
+            </p>
+          </div>
+          <div class="card">
+            <h4>💡 Solução da Plataforma</h4>
+            <p>
+              O sistema calcula em tempo real o Fator R de cada competência, aplica a proporcionalização de RBT12 para empresas com menos de 12 meses de atividade, calcula a alíquota efetiva do Simples Nacional, compara com o regime de <strong>Lucro Presumido</strong>, gera alertas antecipados de proximidade de margem e simula cenários futuros de faturamento (+15%, neutro e -15%).
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Arquitetura -->
+      <section id="arquitetura">
+        <h2 class="section-title"><span class="section-num">2</span> Arquitetura e Padrão de Design</h2>
+        <p>
+          A plataforma é construída sob uma arquitetura desacoplada e desacoplável, estruturada em três camadas essenciais:
+        </p>
+
+        <div class="arch-diagram">
+          <div class="arch-row">
+            <div class="arch-box highlight">
+              <h4 style="color: var(--primary);">SPA Client (Frontend)</h4>
+              <p style="font-size: 0.8rem; margin-top: 4px;">Angular 21 Standalone</p>
+              <span class="badge badge-primary">RxJS State / Forms / Chart / SCSS</span>
+            </div>
+            <div class="arch-arrow">⟷ HTTP / JSON REST ⟷</div>
+            <div class="arch-box highlight">
+              <h4 style="color: var(--accent);">API Backend Server</h4>
+              <p style="font-size: 0.8rem; margin-top: 4px;">Java 21 + Spring Boot 4.0.6</p>
+              <span class="badge badge-secondary">Spring WebMVC / Spring Data JPA / Validation</span>
+            </div>
+            <div class="arch-arrow">⟷ JDBC / SQL ⟷</div>
+            <div class="arch-box highlight">
+              <h4 style="color: var(--success);">Banco de Dados Relacional</h4>
+              <p style="font-size: 0.8rem; margin-top: 4px;">PostgreSQL 16</p>
+              <span class="badge badge-get">Docker Container</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="sub-title">Padrões de Projeto (Design Patterns) Utilizados</h3>
+        <div class="card-grid">
+          <div class="card">
+            <h4>Layered Architecture (Camadas)</h4>
+            <p>Separação estrita de responsabilidades: <code>Controller</code> (comunicação HTTP/JSON), <code>Service</code> (regras tributárias e cálculos), <code>Repository</code> (acesso a dados com Spring Data) e <code>Domain Entity</code> (mapeamento ORM Hibernate).</p>
+          </div>
+          <div class="card">
+            <h4>DTO (Data Transfer Object)</h4>
+            <p>Isolamento das entidades do banco de dados na comunicação externa, garantindo segurança de tipos, controle de serialização e proteção contra *Overposting*.</p>
+          </div>
+          <div class="card">
+            <h4>Repository Pattern & Dependency Injection</h4>
+            <p>Inversão de controle via <code>@Autowired</code> e injeção por construtor com <code>@RequiredArgsConstructor</code> (Lombok), desacoplando a persistência.</p>
+          </div>
+          <div class="card">
+            <h4>Reactive State & Context Sharing</h4>
+            <p>No frontend, uso de <code>BehaviorSubject</code> do RxJS no <code>EmpresaContextService</code> e <code>AuthService</code> para prover estado global reativo da empresa selecionada e do usuário autenticado.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Mapeamento de Arquivos -->
+      <section id="arvore-arquivos">
+        <h2 class="section-title"><span class="section-num">3</span> Mapeamento Completo da Árvore de Arquivos</h2>
+        <p>Todos os arquivos que compõem a solução e suas respectivas responsabilidades técnicas:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Caminho do Arquivo</th>
+                <th>Tipo / Módulo</th>
+                <th>Finalidade e Responsabilidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>docker-compose.yml</code></td>
+                <td>Docker / Infraestrutura</td>
+                <td>Orquestra o container do banco de dados relacional PostgreSQL 16 Alpine na porta 5432.</td>
+              </tr>
+              <tr>
+                <td><code>.gitignore</code></td>
+                <td>Git / Versionamento</td>
+                <td>Ignora dependências (node_modules, target), caches, variáveis (.env), builds e temporários de IDEs.</td>
+              </tr>
+              <tr>
+                <td><code>.env.example</code></td>
+                <td>Configuração</td>
+                <td>Template seguro de variáveis de ambiente com documentação de credenciais para banco e portas.</td>
+              </tr>
+              <tr>
+                <td><code>documentacao.html</code></td>
+                <td>Documentação</td>
+                <td>Documentação técnica completa, estática, interativa e autocontida do projeto.</td>
+              </tr>
+              <tr>
+                <td><code>README.md</code></td>
+                <td>Documentação</td>
+                <td>Guia oficial de apresentação, arquitetura, instalação, execução e comandos do projeto.</td>
+              </tr>
+              <tr>
+                <td><code>backend/pom.xml</code></td>
+                <td>Maven / Build</td>
+                <td>Declaração de dependências do Spring Boot 4.0.6 (Web, Data JPA, Validation, PostgreSQL, Lombok).</td>
+              </tr>
+              <tr>
+                <td><code>backend/src/main/resources/application.properties</code></td>
+                <td>Backend / Config</td>
+                <td>Configurações de conexão JDBC ao PostgreSQL, dialeto Hibernate, DDL auto e porta do servidor.</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../BackendApplication.java</code></td>
+                <td>Backend / Bootstrap</td>
+                <td>Classe principal com anotação <code>@SpringBootApplication</code> e método <code>main</code> de inicialização.</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../config/DataSeeder.java</code></td>
+                <td>Backend / Config</td>
+                <td>Implementa <code>CommandLineRunner</code> para semear o usuário admin padrão e as faixas tributárias padrão.</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../domain/Empresa.java</code></td>
+                <td>Backend / Domain</td>
+                <td>Entidade JPA mapeando a tabela <code>empresas</code> (Razão Social, CNPJ, Data de Abertura).</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../domain/FaixaTributaria.java</code></td>
+                <td>Backend / Domain</td>
+                <td>Entidade JPA mapeando faixas progressivas do Simples Nacional (Anexos III e V, alíquotas e deduções).</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../domain/FaturamentoMensal.java</code></td>
+                <td>Backend / Domain</td>
+                <td>Entidade JPA mapeando a tabela <code>faturamentos_mensais</code> (Competência e Valor).</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../domain/FolhaPagamentoMensal.java</code></td>
+                <td>Backend / Domain</td>
+                <td>Entidade JPA mapeando a tabela <code>folhas_pagamento</code> (Competência e Valor).</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../domain/ParametroTributario.java</code></td>
+                <td>Backend / Domain</td>
+                <td>Entidade JPA com as alíquotas de Lucro Presumido e a lista de faixas associadas.</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../domain/TipoUsuario.java</code></td>
+                <td>Backend / Domain</td>
+                <td>Enum com os tipos de perfil de acesso (<code>ADMINISTRADOR_CONTABIL</code> e <code>USUARIO_EMPRESA</code>).</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../domain/Usuario.java</code></td>
+                <td>Backend / Domain</td>
+                <td>Entidade JPA mapeando a tabela <code>usuarios</code> e relação N:N com empresas.</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../dto/*.java</code></td>
+                <td>Backend / DTO</td>
+                <td>Contratos de dados: <code>AuthResponseDTO</code>, <code>EmpresaResumoDTO</code>, <code>FatorRResultadoDTO</code>, <code>FaturamentoHistoricoDTO</code>, <code>FaturamentoMensalDTO</code>, <code>FolhaPagamentoMensalDTO</code>, <code>LoginDTO</code>, <code>NovoUsuarioEmpresaDTO</code>, <code>ProjecaoCenarioDTO</code>, <code>SimulacaoTributariaDTO</code>, <code>UsuarioDTO</code>.</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../repository/*.java</code></td>
+                <td>Backend / Repository</td>
+                <td>Interfaces Spring Data: <code>EmpresaRepository</code>, <code>FaturamentoMensalRepository</code>, <code>FolhaPagamentoMensalRepository</code>, <code>ParametroTributarioRepository</code>, <code>UsuarioRepository</code>.</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../service/CalculoFatorRService.java</code></td>
+                <td>Backend / Service</td>
+                <td>Núcleo de cálculo: Apuração de Fator R, enquadramento de faixas, alíquota efetiva, Lucro Presumido e projeções.</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../service/LeitorXmlNfeService.java</code></td>
+                <td>Backend / Service</td>
+                <td>Serviço de importação e processamento de arquivos XML de NF-e.</td>
+              </tr>
+              <tr>
+                <td><code>backend/.../controller/*.java</code></td>
+                <td>Backend / Controller</td>
+                <td>Endpoints REST: <code>AuthController</code>, <code>EmpresaController</code>, <code>FaturamentoMensalController</code>, <code>FolhaPagamentoMensalController</code>, <code>ParametroTributarioController</code>, <code>UsuarioController</code>.</td>
+              </tr>
+              <tr>
+                <td><code>backend/src/test/.../CalculoFatorRServiceTest.java</code></td>
+                <td>Backend / Testes</td>
+                <td>Testes unitários automatizados com JUnit 5 e Mockito validando a segregação de Anexos III e V.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/package.json</code></td>
+                <td>Frontend / Config</td>
+                <td>Dependências do Angular 21, TypeScript, RxJS e scripts de compilação.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/environments/environment*.ts</code></td>
+                <td>Frontend / Config</td>
+                <td>Definição das URLs da API REST para ambientes de desenvolvimento e produção.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/models/models.ts</code></td>
+                <td>Frontend / Models</td>
+                <td>Interfaces e contratos TypeScript espelhando os DTOs e entidades do backend.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/services/*.ts</code></td>
+                <td>Frontend / Services</td>
+                <td>Serviços Angular: <code>AuthService</code>, <code>AuthGuard</code>, <code>EmpresaService</code>, <code>EmpresaContextService</code>, <code>FatorRService</code>, <code>UsuarioService</code>.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/layout/main-layout/*</code></td>
+                <td>Frontend / Layout</td>
+                <td>Layout principal com header global, dropdown seletor de empresa e navegação lateral.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/pages/login/*</code></td>
+                <td>Frontend / Page</td>
+                <td>Página de login com autenticação por CPF mascarado e senha.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/pages/home/*</code></td>
+                <td>Frontend / Page</td>
+                <td>Dashboard inicial com cartões de atalho rápido e boas-vindas ao usuário.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/pages/simulador/*</code></td>
+                <td>Frontend / Page</td>
+                <td>Tela do simulador tributário: velocímetro (Gauge), histórico de 12 meses, lançamentos e projeções futuras.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/pages/empresas/*</code></td>
+                <td>Frontend / Page</td>
+                <td>Gerenciamento de empresas (cadastro, exclusão, vinculação de usuários clientes com modal).</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/pages/parametros/*</code></td>
+                <td>Frontend / Page</td>
+                <td>Configuração de alíquotas e faixas personalizadas para a empresa selecionada.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/pages/parametros-padrao/*</code></td>
+                <td>Frontend / Page</td>
+                <td>Configuração administrativa das alíquotas e faixas tributárias padrão globais do sistema.</td>
+              </tr>
+              <tr>
+                <td><code>frontend/src/app/pages/usuarios-admin/*</code></td>
+                <td>Frontend / Page</td>
+                <td>Listagem administrativa de todos os usuários do sistema e suas empresas associadas.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 4. Fórmulas e Regras de Negócio -->
+      <section id="formulas-matematicas">
+        <h2 class="section-title"><span class="section-num">4</span> Fórmulas Matemáticas e Regras Fiscais</h2>
+        
+        <p>Abaixo estão descritas todas as regras matemáticas e fiscais implementadas no núcleo do sistema:</p>
+
+        <!-- Fórmula 1: Fator R -->
+        <div class="formula-card">
+          <h4>1. Cálculo do Percentual do Fator R</h4>
+          <p>
+            O Fator R é obtido dividindo a soma da folha de pagamento dos 12 meses anteriores à competência pela soma da receita bruta acumulada no mesmo período:
+          </p>
+          <div class="formula-math">
+            Fator R = ( &Sigma; Folha de Pagamento nos últimos 12 meses ) &divide; ( &Sigma; Receita Bruta nos últimos 12 meses )
+          </div>
+          <p><strong>Regra de Enquadramento:</strong></p>
+          <ul style="margin-left: 20px; color: var(--text-muted);">
+            <li>Se <code>Fator R &ge; 0.28 (28%)</code> &rarr; Tributação pelo <strong>Anexo III</strong> (Alíquota menor, mais vantajoso).</li>
+            <li>Se <code>Fator R &lt; 0.28 (28%)</code> &rarr; Tributação pelo <strong>Anexo V</strong> (Alíquota maior).</li>
+            <li><strong>Caso especial de Faturamento Zero:</strong> Se &Sigma; Receita Bruta = 0, para evitar divisão por zero (<code>ArithmeticException</code>), o sistema enquadra automaticamente no <strong>Anexo V</strong> com percentual 0,00%.</li>
+          </ul>
+        </div>
+
+        <!-- Fórmula 2: Alertas -->
+        <div class="formula-card">
+          <h4>2. Regra dos Alertas de Proximidade da Margem</h4>
+          <p>O sistema monitora faixas críticas de transição entre os Anexos III e V:</p>
+          <ul style="margin-left: 20px; color: var(--text-muted);">
+            <li><strong>Zona de Oportunidade (25,00% a 27,99%):</strong> Dispara alerta informando que um pequeno aumento na folha de pagamento (ex: retirada de pró-labore adicional) pode migrar a empresa para o Anexo III, gerando grande economia tributária.</li>
+            <li><strong>Zona de Risco de Rebaixamento (28,00% a 31,00%):</strong> Dispara alerta informando que a empresa está operando próxima do limite e qualquer redução na folha pode rebaixá-la de volta ao oneroso Anexo V.</li>
+          </ul>
+        </div>
+
+        <!-- Fórmula 3: Proporcionalização RBT12 -->
+        <div class="formula-card">
+          <h4>3. Proporcionalização do RBT12 (Início de Atividade &lt; 12 meses)</h4>
+          <p>
+            Para empresas com menos de 12 meses completos de operação desde a <code>dataInicioAtividade</code>, a Receita Bruta Total acumulada não reflete o ano cheio. O sistema efetua a proporcionalização regulamentar pela média mensal multiplicada por 12:
+          </p>
+          <div class="formula-math">
+            RBT12 Proporcional = ( &Sigma; Faturamento nos meses de atividade &divide; Meses de Atividade ) &times; 12
+          </div>
+        </div>
+
+        <!-- Fórmula 4: Alíquota Efetiva SN -->
+        <div class="formula-card">
+          <h4>4. Cálculo da Alíquota Efetiva do Simples Nacional</h4>
+          <p>
+            Diferente da alíquota nominal de tabela, a alíquota efetivamente cobrada no DAS considera a dedução da faixa:
+          </p>
+          <div class="formula-math">
+            Alíquota Efetiva SN = [ ( RBT12 &times; Alíquota Nominal ) - Parcela a Deduzir ] &divide; RBT12
+          </div>
+          <p>O imposto mensal estimado para a competência é dado por: <code>Valor SN = Faturamento do Mês &times; Alíquota Efetiva SN</code>.</p>
+          
+          <div class="callout callout-warning">
+            <strong>Regra Especial da 6ª Faixa:</strong> Quando o RBT12 ultrapassa R$ 3.600.000,00 (atingindo a Faixa 6), o sistema exibe aviso formal de que o ICMS e ISS ultrapassaram o sublimite estadual e devem ser recolhidos em guias municipais e estaduais separadas, fora do DAS.
+          </div>
+        </div>
+
+        <!-- Fórmula 5: Lucro Presumido -->
+        <div class="formula-card">
+          <h4>5. Apuração Comparativa no Lucro Presumido (Serviços)</h4>
+          <p>Para determinar o regime mais vantajoso, o sistema calcula todos os tributos federais e municipais incidentes no Lucro Presumido:</p>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tributo</th>
+                  <th>Base de Cálculo</th>
+                  <th>Alíquota Aplicada</th>
+                  <th>Fórmula</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>PIS</strong></td>
+                  <td>Faturamento do Mês</td>
+                  <td>0,65%</td>
+                  <td><code>Fat &times; 0,0065</code></td>
+                </tr>
+                <tr>
+                  <td><strong>COFINS</strong></td>
+                  <td>Faturamento do Mês</td>
+                  <td>3,00%</td>
+                  <td><code>Fat &times; 0,0300</code></td>
+                </tr>
+                <tr>
+                  <td><strong>ISS</strong></td>
+                  <td>Faturamento do Mês</td>
+                  <td>5,00%</td>
+                  <td><code>Fat &times; 0,0500</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Base Presumida IRPJ/CSLL</strong></td>
+                  <td>Faturamento do Mês</td>
+                  <td>32,00% (Presunção Serviços)</td>
+                  <td><code>Base = Fat &times; 0,32</code></td>
+                </tr>
+                <tr>
+                  <td><strong>IRPJ</strong></td>
+                  <td>Base Presumida</td>
+                  <td>15,00%</td>
+                  <td><code>Base &times; 0,1500</code></td>
+                </tr>
+                <tr>
+                  <td><strong>CSLL</strong></td>
+                  <td>Base Presumida</td>
+                  <td>9,00%</td>
+                  <td><code>Base &times; 0,0900</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Adicional IRPJ</strong></td>
+                  <td>Base Presumida que exceder R$ 20.000,00/mês</td>
+                  <td>10,00%</td>
+                  <td><code>(Base - 20.000) &times; 0,10</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="formula-math">
+            Valor Total Lucro Presumido = PIS + COFINS + ISS + IRPJ + CSLL + Adicional IRPJ
+          </div>
+          <p>
+            <strong>Economia Estimada:</strong> <code>| Valor LP - Valor SN |</code>. O sistema define <code>regimeMaisVantajoso</code> comparando diretamente os valores devidos.
+          </p>
+        </div>
+      </section>
+
+      <!-- 5. Tabelas Tributárias -->
+      <section id="tabelas-tributarias">
+        <h2 class="section-title"><span class="section-num">5</span> Tabelas Oficiais de Parâmetros e Faixas</h2>
+        <p>Valores cadastrados por padrão no banco de dados através da classe <code>DataSeeder</code>:</p>
+
+        <h3 class="sub-title">Tabela Anexo III (Simples Nacional)</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Faixa</th>
+                <th>Receita Bruta em 12 Meses (RBT12)</th>
+                <th>Alíquota Nominal</th>
+                <th>Valor a Deduzir (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1ª Faixa</td><td>Até R$ 180.000,00</td><td>6,00%</td><td>R$ 0,00</td></tr>
+              <tr><td>2ª Faixa</td><td>De R$ 180.000,01 a R$ 360.000,00</td><td>11,20%</td><td>R$ 9.360,00</td></tr>
+              <tr><td>3ª Faixa</td><td>De R$ 360.000,01 a R$ 720.000,00</td><td>13,50%</td><td>R$ 17.640,00</td></tr>
+              <tr><td>4ª Faixa</td><td>De R$ 720.000,01 a R$ 1.800.000,00</td><td>16,00%</td><td>R$ 35.640,00</td></tr>
+              <tr><td>5ª Faixa</td><td>De R$ 1.800.000,01 a R$ 3.600.000,00</td><td>21,00%</td><td>R$ 125.640,00</td></tr>
+              <tr><td>6ª Faixa</td><td>De R$ 3.600.000,01 a R$ 4.800.000,00</td><td>33,00%</td><td>R$ 648.000,00</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub-title">Tabela Anexo V (Simples Nacional)</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Faixa</th>
+                <th>Receita Bruta em 12 Meses (RBT12)</th>
+                <th>Alíquota Nominal</th>
+                <th>Valor a Deduzir (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1ª Faixa</td><td>Até R$ 180.000,00</td><td>15,50%</td><td>R$ 0,00</td></tr>
+              <tr><td>2ª Faixa</td><td>De R$ 180.000,01 a R$ 360.000,00</td><td>18,00%</td><td>R$ 4.500,00</td></tr>
+              <tr><td>3ª Faixa</td><td>De R$ 360.000,01 a R$ 720.000,00</td><td>19,50%</td><td>R$ 9.900,00</td></tr>
+              <tr><td>4ª Faixa</td><td>De R$ 720.000,01 a R$ 1.800.000,00</td><td>20,50%</td><td>R$ 17.100,00</td></tr>
+              <tr><td>5ª Faixa</td><td>De R$ 1.800.000,01 a R$ 3.600.000,00</td><td>23,00%</td><td>R$ 62.100,00</td></tr>
+              <tr><td>6ª Faixa</td><td>De R$ 3.600.000,01 a R$ 4.800.000,00</td><td>30,50%</td><td>R$ 540.000,00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 6. Algoritmo de Projeção -->
+      <section id="algoritmo-projecao">
+        <h2 class="section-title"><span class="section-num">6</span> Algoritmo de Projeção de Cenários Futuros</h2>
+        <p>
+          O sistema implementa o algoritmo de <strong>Janela Deslizante de 12 Meses</strong> para projetar o impacto fiscal dos próximos dois meses subsequentes (<code>M+1</code> e <code>M+2</code>) em três cenários:
+        </p>
+        <div class="card-grid">
+          <div class="card">
+            <h4 style="color: var(--success);">📈 Cenário Otimista (+15%)</h4>
+            <p>Multiplica a receita base por <code>1.15</code> e mantém a folha salarial atual.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: var(--accent);">⚖️ Cenário Neutro (0%)</h4>
+            <p>Mantém a receita e a folha do mês atual com multiplicador <code>1.00</code>.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: var(--danger);">📉 Cenário Pessimista (-15%)</h4>
+            <p>Aplica multiplicador de <code>0.85</code> na receita mantendo a folha fixa.</p>
+          </div>
+        </div>
+
+        <div class="formula-card">
+          <h4>Lógica da Janela Deslizante</h4>
+          <p>Para calcular o <code>RBT12</code> do mês <code>M+1</code>:</p>
+          <div class="formula-math">
+            RBT12(M+1) = RBT12_Atual - Faturamento(M-12) + FaturamentoProjetado(M+1)
+          </div>
+          <p>Para calcular o <code>RBT12</code> do mês <code>M+2</code>:</p>
+          <div class="formula-math">
+            RBT12(M+2) = RBT12(M+1) - Faturamento(M-11) + FaturamentoProjetado(M+2)
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. Backend: Entidades de Domínio -->
+      <section id="backend-domain">
+        <h2 class="section-title"><span class="section-num">7</span> Backend: Entidades de Domínio (JPA)</h2>
+        <p>Mapeamento relacional ORM das tabelas do banco de dados PostgreSQL:</p>
+
+        <div class="card">
+          <h4><code>com.fatorr.backend.domain.Empresa</code></h4>
+          <p>Representa a entidade principal do cliente corporativo ou pessoa jurídica.</p>
+          <ul class="param-list">
+            <li><span class="param-name">id</span>: <span class="param-type">Long</span> - Chave primária auto-incremental (<code>@Id @GeneratedValue</code>).</li>
+            <li><span class="param-name">razaoSocial</span>: <span class="param-type">String</span> - Nome empresarial registrado (obrigatório).</li>
+            <li><span class="param-name">cnpj</span>: <span class="param-type">String</span> - CNPJ único indexado (<code>@Column(unique = true)</code>).</li>
+            <li><span class="param-name">dataInicioAtividade</span>: <span class="param-type">LocalDate</span> - Data de abertura para cálculo de proporcionalidade.</li>
+            <li><span class="param-name">usuarios</span>: <span class="param-type">Set&lt;Usuario&gt;</span> - Relação ManyToMany com usuários autorizados.</li>
+            <li><span class="param-name">faturamentos</span>: <span class="param-type">List&lt;FaturamentoMensal&gt;</span> - Lista de receitas registradas (Cascade ALL).</li>
+            <li><span class="param-name">folhas</span>: <span class="param-type">List&lt;FolhaPagamentoMensal&gt;</span> - Lista de folhas registradas (Cascade ALL).</li>
+            <li><span class="param-name">parametros</span>: <span class="param-type">List&lt;ParametroTributario&gt;</span> - Parâmetros tributários específicos da empresa.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>com.fatorr.backend.domain.FaixaTributaria</code></h4>
+          <p>Representa uma linha da tabela progressiva dos Anexos do Simples Nacional.</p>
+          <ul class="param-list">
+            <li><span class="param-name">id</span>: <span class="param-type">Long</span> - Chave primária.</li>
+            <li><span class="param-name">anexo</span>: <span class="param-type">String</span> - Identificador do Anexo ("III" ou "V").</li>
+            <li><span class="param-name">numeroFaixa</span>: <span class="param-type">Integer</span> - Número ordinal da faixa (1 a 6).</li>
+            <li><span class="param-name">limiteSuperior</span>: <span class="param-type">BigDecimal</span> - Teto de RBT12 (nulo para faixa 6).</li>
+            <li><span class="param-name">aliquotaNominal</span>: <span class="param-type">BigDecimal</span> - Alíquota percentual da faixa (ex: 0.0600).</li>
+            <li><span class="param-name">valorDeduzir</span>: <span class="param-type">BigDecimal</span> - Parcela a deduzir em Reais (ex: 9360.00).</li>
+            <li><span class="param-name">parametro</span>: <span class="param-type">ParametroTributario</span> - Relação ManyToOne com a tabela pai.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>com.fatorr.backend.domain.FaturamentoMensal</code></h4>
+          <p>Registro do faturamento bruto recebido em determinada competência mensal.</p>
+          <ul class="param-list">
+            <li><span class="param-name">id</span>: <span class="param-type">Long</span> - Chave primária.</li>
+            <li><span class="param-name">empresa</span>: <span class="param-type">Empresa</span> - Empresa dona do lançamento (ManyToOne).</li>
+            <li><span class="param-name">competencia</span>: <span class="param-type">YearMonth</span> - Mês e ano da competência (ex: 2026-05).</li>
+            <li><span class="param-name">valor</span>: <span class="param-type">BigDecimal</span> - Valor total faturado no mês.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>com.fatorr.backend.domain.FolhaPagamentoMensal</code></h4>
+          <p>Registro do total de gastos com folha de pagamento, salários e pró-labore no mês.</p>
+          <ul class="param-list">
+            <li><span class="param-name">id</span>: <span class="param-type">Long</span> - Chave primária.</li>
+            <li><span class="param-name">empresa</span>: <span class="param-type">Empresa</span> - Empresa proprietária da folha.</li>
+            <li><span class="param-name">competencia</span>: <span class="param-type">YearMonth</span> - Ano e mês da folha.</li>
+            <li><span class="param-name">valor</span>: <span class="param-type">BigDecimal</span> - Montante total pago em folha.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>com.fatorr.backend.domain.ParametroTributario</code></h4>
+          <p>Configurações de alíquotas do Lucro Presumido e coleção de faixas progressivas.</p>
+          <ul class="param-list">
+            <li><span class="param-name">id</span>: <span class="param-type">Long</span> - Chave primária.</li>
+            <li><span class="param-name">aliquotaPis, aliquotaCofins, aliquotaIss, aliquotaIrpj, aliquotaAdicionalIrpj, aliquotaCsll</span>: <span class="param-type">BigDecimal</span> - Alíquotas de tributos federais e municipais do Lucro Presumido.</li>
+            <li><span class="param-name">ativo</span>: <span class="param-type">boolean</span> - Flag indicador de configuração ativa.</li>
+            <li><span class="param-name">empresa</span>: <span class="param-type">Empresa</span> - Referência à empresa (nulo para padrão global do sistema).</li>
+            <li><span class="param-name">faixas</span>: <span class="param-type">List&lt;FaixaTributaria&gt;</span> - Coleção Eager das faixas de Anexo III e V.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>com.fatorr.backend.domain.Usuario</code> & <code>TipoUsuario</code></h4>
+          <p>Entidade de controle de acesso e perfil de usuário.</p>
+          <ul class="param-list">
+            <li><span class="param-name">id</span>: <span class="param-type">Long</span> - Identificador único.</li>
+            <li><span class="param-name">cpf</span>: <span class="param-type">String</span> - CPF do usuário (chave de login única).</li>
+            <li><span class="param-name">senha</span>: <span class="param-type">String</span> - Senha de autenticação (<code>@JsonIgnore</code>).</li>
+            <li><span class="param-name">tipo</span>: <span class="param-type">TipoUsuario</span> - <code>ADMINISTRADOR_CONTABIL</code> ou <code>USUARIO_EMPRESA</code>.</li>
+            <li><span class="param-name">empresas</span>: <span class="param-type">Set&lt;Empresa&gt;</span> - Conjunto de empresas às quais o usuário tem permissão de acesso.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 8. Backend: DTOs -->
+      <section id="backend-dto">
+        <h2 class="section-title"><span class="section-num">8</span> Backend: Data Transfer Objects (DTOs)</h2>
+        <p>Classes imutáveis e anotadas com Lombok para serialização JSON nos endpoints REST:</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome do DTO</th>
+                <th>Campos e Tipos</th>
+                <th>Finalidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>AuthResponseDTO</code></td>
+                <td><code>id (Long)</code>, <code>cpf (String)</code>, <code>tipo (TipoUsuario)</code>, <code>token (String)</code></td>
+                <td>Resposta de autenticação bem-sucedida do endpoint <code>/api/auth/login</code>.</td>
+              </tr>
+              <tr>
+                <td><code>LoginDTO</code></td>
+                <td><code>cpf (String)</code>, <code>senha (String)</code></td>
+                <td>Payload de entrada para efetuar login na aplicação.</td>
+              </tr>
+              <tr>
+                <td><code>EmpresaResumoDTO</code></td>
+                <td><code>id (Long)</code>, <code>razaoSocial (String)</code>, <code>cnpj (String)</code></td>
+                <td>Resumo cadastral de empresa para listagem limpa em painéis de usuários.</td>
+              </tr>
+              <tr>
+                <td><code>FatorRResultadoDTO</code></td>
+                <td><code>empresaId</code>, <code>razaoSocial</code>, <code>competenciaReferencia</code>, <code>totalFaturamento12Meses</code>, <code>totalFolha12Meses</code>, <code>percentualFatorR</code>, <code>anexoAplicavel</code>, <code>mensagem</code></td>
+                <td>Resultado da apuração do Fator R de um período específico.</td>
+              </tr>
+              <tr>
+                <td><code>FaturamentoMensalDTO</code></td>
+                <td><code>id</code>, <code>empresaId</code>, <code>competencia (YearMonth)</code>, <code>valor (BigDecimal)</code></td>
+                <td>Payload de inserção e atualização de receita mensal.</td>
+              </tr>
+              <tr>
+                <td><code>FolhaPagamentoMensalDTO</code></td>
+                <td><code>id</code>, <code>empresaId</code>, <code>competencia (YearMonth)</code>, <code>valor (BigDecimal)</code></td>
+                <td>Payload de inserção e atualização de folha mensal.</td>
+              </tr>
+              <tr>
+                <td><code>FaturamentoHistoricoDTO</code></td>
+                <td><code>competencia</code>, <code>faturamento</code>, <code>folhaPagamento</code></td>
+                <td>Item individual da série histórica de 12 meses exibida no simulador.</td>
+              </tr>
+              <tr>
+                <td><code>NovoUsuarioEmpresaDTO</code></td>
+                <td><code>cpf (String)</code>, <code>senha (String)</code>, <code>empresaId (Long)</code></td>
+                <td>Requisição para cadastrar ou vincular um usuário a uma empresa específica.</td>
+              </tr>
+              <tr>
+                <td><code>UsuarioDTO</code></td>
+                <td><code>id</code>, <code>cpf</code>, <code>tipo</code>, <code>empresas (List&lt;EmpresaResumoDTO&gt;)</code></td>
+                <td>Exibição dos usuários e suas empresas associadas no painel de administração.</td>
+              </tr>
+              <tr>
+                <td><code>SimulacaoTributariaDTO</code></td>
+                <td>Contém dados da empresa, totais de 12 meses, RBT12, faixa encontrada, percentual Fator R, anexo, flags de alerta, alíquota e valor do SN, alíquotas e detalhamento completo do Lucro Presumido (PIS, COFINS, ISS, IRPJ, CSLL, adicional), economia estimada, regime mais vantajoso e lista de histórico.</td>
+                <td>Objeto consolidado retornado pelo endpoint principal de simulação fiscal.</td>
+              </tr>
+              <tr>
+                <td><code>ProjecaoCenarioDTO</code></td>
+                <td><code>nomeCenario</code>, <code>descricao</code>, <code>meses (List&lt;MesProjecaoDTO&gt;)</code></td>
+                <td>Estrutura contendo a projeção detalhada para os meses M+1 e M+2.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 9. Backend: Repositórios JPA -->
+      <section id="backend-repositories">
+        <h2 class="section-title"><span class="section-num">9</span> Backend: Repositórios Spring Data JPA</h2>
+        <p>Interfaces que herdam de <code>JpaRepository</code> com consultas otimizadas e JPQL:</p>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">EmpresaRepository</span>
+            <span class="badge badge-primary">Spring Data JPA</span>
+          </div>
+          <ul class="param-list">
+            <li>
+              <span class="param-name">findByUsuariosId(Long usuarioId)</span>: Retorna <code>List&lt;Empresa&gt;</code> vinculadas ao usuário.
+            </li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">FaturamentoMensalRepository</span>
+            <span class="badge badge-primary">Spring Data JPA</span>
+          </div>
+          <ul class="param-list">
+            <li>
+              <span class="param-name">findUltimos12Meses(Long empresaId, YearMonth dataInicio, YearMonth dataFim)</span>: Executa query JPQL customizada retornando receitas entre as competências ordenadas de forma ascendente.
+            </li>
+            <li>
+              <span class="param-name">findByEmpresaIdAndCompetencia(Long empresaId, YearMonth competencia)</span>: Busca lançamentos existentes para substituição idempotente.
+            </li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">FolhaPagamentoMensalRepository</span>
+            <span class="badge badge-primary">Spring Data JPA</span>
+          </div>
+          <ul class="param-list">
+            <li>
+              <span class="param-name">findUltimos12Meses(Long empresaId, YearMonth dataInicio, YearMonth dataFim)</span>: Executa query JPQL retornando folhas de pagamento no intervalo de 12 meses.
+            </li>
+            <li>
+              <span class="param-name">findByEmpresaIdAndCompetencia(Long empresaId, YearMonth competencia)</span>: Busca folha específica de determinada competência.
+            </li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">ParametroTributarioRepository</span>
+            <span class="badge badge-primary">Spring Data JPA</span>
+          </div>
+          <ul class="param-list">
+            <li>
+              <span class="param-name">findByAtivoTrueAndEmpresaIsNull()</span>: Retorna <code>Optional&lt;ParametroTributario&gt;</code> com a configuração padrão global ativa.
+            </li>
+            <li>
+              <span class="param-name">findByAtivoTrueAndEmpresaId(Long empresaId)</span>: Retorna configuração ativa específica da empresa.
+            </li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">UsuarioRepository</span>
+            <span class="badge badge-primary">Spring Data JPA</span>
+          </div>
+          <ul class="param-list">
+            <li>
+              <span class="param-name">findByCpf(String cpf)</span>: Busca usuário único pelo CPF.
+            </li>
+            <li>
+              <span class="param-name">findByEmpresasId(Long empresaId)</span>: Lista usuários autorizados para determinada empresa.
+            </li>
+            <li>
+              <span class="param-name">findAllWithEmpresas()</span>: Executa JPQL <code>SELECT u FROM Usuario u LEFT JOIN FETCH u.empresas</code> evitando o problema de N+1 queries.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 10. Backend: Serviços -->
+      <section id="backend-services">
+        <h2 class="section-title"><span class="section-num">10</span> Backend: Serviços e Métodos Detalhados</h2>
+        <p>Especificação exaustiva de cada método existente na camada de serviços:</p>
+
+        <!-- CalculoFatorRService -->
+        <h3 class="sub-title"><code>CalculoFatorRService</code></h3>
+        
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">getParametros(Long empresaId)</span>
+            <span class="badge badge-secondary">private</span>
+          </div>
+          <p><strong>Objetivo:</strong> Recupera os parâmetros tributários ativos da empresa, aplicando fallback para os parâmetros globais e fallback em memória caso o banco esteja vazio.</p>
+          <ul class="param-list">
+            <li><strong>Parâmetros:</strong> <code>Long empresaId</code> (ID da empresa consultada).</li>
+            <li><strong>Retorno:</strong> <code>ParametroTributario</code> (objeto com alíquotas e faixas).</li>
+            <li><strong>Exceções:</strong> Nenhuma.</li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">calcularFatorR(Long empresaId, YearMonth competenciaReferencia)</span>
+            <span class="badge badge-primary">public</span>
+          </div>
+          <p><strong>Objetivo:</strong> Realiza a apuração do Fator R da empresa para a competência indicada com base nos 12 meses anteriores.</p>
+          <ul class="param-list">
+            <li><strong>Parâmetros:</strong> <code>Long empresaId</code> (ID da empresa), <code>YearMonth competenciaReferencia</code> (Mês e ano da apuração).</li>
+            <li><strong>Retorno:</strong> <code>FatorRResultadoDTO</code> (DTO com totais de faturamento e folha, percentual apurado e enquadramento em Anexo III ou V).</li>
+            <li><strong>Exceções:</strong> Dispara <code>IllegalArgumentException</code> se a empresa não existir.</li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">simularTributacao(Long empresaId, YearMonth competenciaReferencia)</span>
+            <span class="badge badge-primary">public</span>
+          </div>
+          <p><strong>Objetivo:</strong> Executa a simulação fiscal completa: Fator R, alertas de margem, proporcionalização de RBT12, busca de faixa progressiva, cálculo de alíquota efetiva do Simples Nacional, apuração de todos os tributos do Lucro Presumido e cálculo de economia.</p>
+          <ul class="param-list">
+            <li><strong>Parâmetros:</strong> <code>Long empresaId</code>, <code>YearMonth competenciaReferencia</code>.</li>
+            <li><strong>Retorno:</strong> <code>SimulacaoTributariaDTO</code> (Payload detalhado com comparativo de regimes e histórico).</li>
+            <li><strong>Exceções:</strong> Dispara <code>IllegalArgumentException</code> se o ID da empresa for inválido.</li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">simularProximosMeses(Long empresaId, YearMonth competenciaReferencia)</span>
+            <span class="badge badge-primary">public</span>
+          </div>
+          <p><strong>Objetivo:</strong> Gera a projeção dos meses M+1 e M+2 para três cenários hipotéticos (Otimista +15%, Neutro 0% e Pessimista -15%).</p>
+          <ul class="param-list">
+            <li><strong>Parâmetros:</strong> <code>Long empresaId</code>, <code>YearMonth competenciaReferencia</code>.</li>
+            <li><strong>Retorno:</strong> <code>List&lt;ProjecaoCenarioDTO&gt;</code> contendo os 3 cenários e seus respectivos meses projetados.</li>
+            <li><strong>Exceções:</strong> Propaga <code>IllegalArgumentException</code> se a empresa não existir.</li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">gerarCenario(Long empresaId, YearMonth competenciaAtual, SimulacaoTributariaDTO simulacaoAtual, BigDecimal faturamentoBase, BigDecimal folhaBase, String nome, String descricao, BigDecimal multiplicador)</span>
+            <span class="badge badge-secondary">private</span>
+          </div>
+          <p><strong>Objetivo:</strong> Constrói um cenário de projeção específico aplicando a janela deslizante de 12 meses e calculando os impostos projetados.</p>
+          <ul class="param-list">
+            <li><strong>Parâmetros:</strong> Dados de contexto da simulação atual e o multiplicador de faturamento (1.15, 1.00 ou 0.85).</li>
+            <li><strong>Retorno:</strong> <code>ProjecaoCenarioDTO</code> com a lista de meses calculados.</li>
+            <li><strong>Exceções:</strong> Nenhuma.</li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">calcularMesProjecao(YearMonth competencia, BigDecimal faturamentoEstimado, BigDecimal folhaEstimada, BigDecimal rbt12Estimado, BigDecimal folha12Estimado, ParametroTributario params)</span>
+            <span class="badge badge-secondary">private</span>
+          </div>
+          <p><strong>Objetivo:</strong> Calcula a alíquota efetiva e o imposto estimado no Simples Nacional para um mês individualizado de projeção.</p>
+          <ul class="param-list">
+            <li><strong>Parâmetros:</strong> Competência futura, valores estimados de faturamento/folha e parâmetros tributários.</li>
+            <li><strong>Retorno:</strong> <code>ProjecaoCenarioDTO.MesProjecaoDTO</code>.</li>
+            <li><strong>Exceções:</strong> Nenhuma.</li>
+          </ul>
+        </div>
+
+        <!-- LeitorXmlNfeService -->
+        <h3 class="sub-title"><code>LeitorXmlNfeService</code></h3>
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">processarXmlNfe(InputStream arquivoXml)</span>
+            <span class="badge badge-primary">public</span>
+          </div>
+          <p><strong>Objetivo:</strong> Extrai informações fiscais (CNPJ do emissor, valor total <code>vNF</code>, data de emissão) a partir do arquivo XML de NF-e para importação automatizada de receitas.</p>
+          <ul class="param-list">
+            <li><strong>Parâmetros:</strong> <code>InputStream arquivoXml</code>.</li>
+            <li><strong>Retorno:</strong> <code>void</code>.</li>
+            <li><strong>Exceções:</strong> Dispara <code>UnsupportedOperationException</code> (módulo preparado para integração com Jackson XML / JAXB).</li>
+          </ul>
+        </div>
+
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="method-name">processarLote(MultipartFile[] arquivos)</span>
+            <span class="badge badge-primary">public</span>
+          </div>
+          <p><strong>Objetivo:</strong> Itera sobre um lote de múltiplos arquivos XML enviados via upload para processamento em massa.</p>
+          <ul class="param-list">
+            <li><strong>Parâmetros:</strong> <code>MultipartFile[] arquivos</code>.</li>
+            <li><strong>Retorno:</strong> <code>void</code>.</li>
+            <li><strong>Exceções:</strong> Dispara <code>UnsupportedOperationException</code>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 11. Backend: Controllers REST -->
+      <section id="backend-controllers">
+        <h2 class="section-title"><span class="section-num">11</span> Backend: Controllers e Endpoints REST</h2>
+        
+        <p>Detalhamento de todos os controladores da camada WebMVC:</p>
+
+        <!-- AuthController -->
+        <div class="card">
+          <h4><code>AuthController</code> (Base: <code>/api/auth</code>)</h4>
+          <div class="method-spec">
+            <span class="badge badge-post">POST /login</span> <code>login(@RequestBody LoginDTO loginDto)</code>
+            <p style="margin-top: 6px;">Recebe CPF e senha, valida as credenciais no banco e retorna <code>AuthResponseDTO</code> (Status 200 OK) ou Status 401 UNAUTHORIZED caso as credenciais estejam inválidas.</p>
+          </div>
+        </div>
+
+        <!-- EmpresaController -->
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>EmpresaController</code> (Base: <code>/api/empresas</code>)</h4>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /</span> <code>listarTodas(@RequestParam(required = false) Long usuarioId)</code>
+            <p style="margin-top: 6px;">Lista todas as empresas do sistema ou filtra apenas as empresas associadas ao <code>usuarioId</code> informado.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /{id}</span> <code>buscarPorId(@PathVariable Long id)</code>
+            <p style="margin-top: 6px;">Retorna a empresa com o ID especificado ou 404 NOT FOUND se não existir.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-post">POST /</span> <code>criar(@RequestBody Empresa empresa)</code>
+            <p style="margin-top: 6px;">Cadastra e persiste uma nova empresa no banco de dados.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-put">PUT /{id}</span> <code>atualizar(@PathVariable Long id, @RequestBody Empresa empresaAtualizada)</code>
+            <p style="margin-top: 6px;">Atualiza a Razão Social e o CNPJ de uma empresa existente.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-delete">DELETE /{id}</span> <code>excluir(@PathVariable Long id)</code>
+            <p style="margin-top: 6px;">Remove a empresa e todos os seus lançamentos associados (Cascade ALL). Retorna 204 NO CONTENT.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /{id}/simulacao-tributaria</span> <code>simularTributacao(@PathVariable Long id, @RequestParam(required = false) Integer ano, @RequestParam(required = false) Integer mes)</code>
+            <p style="margin-top: 6px;">Calcula a simulação tributária completa para o ano/mês especificados (ou mês atual se omitido).</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /{id}/simulacao-futura</span> <code>simularProximosMeses(@PathVariable Long id, @RequestParam(required = false) Integer ano, @RequestParam(required = false) Integer mes)</code>
+            <p style="margin-top: 6px;">Calcula os 3 cenários de projeção futura para as duas competências seguintes.</p>
+          </div>
+        </div>
+
+        <!-- FaturamentoMensalController -->
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>FaturamentoMensalController</code> (Base: <code>/api/faturamentos</code>)</h4>
+          <div class="method-spec">
+            <span class="badge badge-post">POST /</span> <code>criar(@RequestBody FaturamentoMensalDTO dto)</code>
+            <p style="margin-top: 6px;">Cria ou sobrescreve de forma idempotente o faturamento da competência para a empresa informada.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /empresa/{empresaId}</span> <code>listarPorEmpresa(@PathVariable Long empresaId)</code>
+            <p style="margin-top: 6px;">Retorna os registros de faturamento dos últimos 12 meses da empresa.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-delete">DELETE /{id}</span> <code>excluir(@PathVariable Long id)</code>
+            <p style="margin-top: 6px;">Exclui um lançamento de faturamento por ID.</p>
+          </div>
+        </div>
+
+        <!-- FolhaPagamentoMensalController -->
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>FolhaPagamentoMensalController</code> (Base: <code>/api/folhas</code>)</h4>
+          <div class="method-spec">
+            <span class="badge badge-post">POST /</span> <code>criar(@RequestBody FolhaPagamentoMensalDTO dto)</code>
+            <p style="margin-top: 6px;">Cria ou sobrescreve a folha de pagamento da competência indicada para a empresa.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /empresa/{empresaId}</span> <code>listarPorEmpresa(@PathVariable Long empresaId)</code>
+            <p style="margin-top: 6px;">Retorna os registros de folha dos últimos 12 meses da empresa.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-delete">DELETE /{id}</span> <code>excluir(@PathVariable Long id)</code>
+            <p style="margin-top: 6px;">Exclui um lançamento de folha por ID.</p>
+          </div>
+        </div>
+
+        <!-- ParametroTributarioController -->
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>ParametroTributarioController</code> (Base: <code>/api/parametros</code>)</h4>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /padrao</span> <code>getPadrao()</code>
+            <p style="margin-top: 6px;">Retorna os parâmetros tributários e faixas padrão globais do sistema.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-post">POST /padrao</span> <code>salvarPadrao(@RequestBody ParametroTributario novoParametro)</code>
+            <p style="margin-top: 6px;">Desativa o padrão atual e grava uma nova versão das alíquotas e faixas padrão globais.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /empresa/{empresaId}</span> <code>getPorEmpresa(@PathVariable Long empresaId)</code>
+            <p style="margin-top: 6px;">Retorna a configuração de alíquotas e faixas customizadas para uma empresa.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-post">POST /empresa/{empresaId}</span> <code>salvarPorEmpresa(@PathVariable Long empresaId, @RequestBody ParametroTributario novoParametro)</code>
+            <p style="margin-top: 6px;">Grava alíquotas e faixas customizadas exclusivamente para a empresa indicada.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /atual</span> <code>getAtual()</code>
+            <p style="margin-top: 6px;">Endpoint de compatibilidade que redireciona internamente para <code>getPadrao()</code>.</p>
+          </div>
+        </div>
+
+        <!-- UsuarioController -->
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>UsuarioController</code> (Base: <code>/api/usuarios</code>)</h4>
+          <div class="method-spec">
+            <span class="badge badge-post">POST /vincular-empresa</span> <code>criarEVincularUsuario(@RequestBody NovoUsuarioEmpresaDTO dto)</code>
+            <p style="margin-top: 6px;">Cria um novo usuário cliente ou atualiza a senha de usuário existente e o vincula à empresa indicada.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /</span> <code>listarTodosUsuarios()</code>
+            <p style="margin-top: 6px;">Retorna a lista completa de usuários do sistema com resumo das empresas associadas.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-get">GET /empresa/{empresaId}</span> <code>listarUsuariosDaEmpresa(@PathVariable Long empresaId)</code>
+            <p style="margin-top: 6px;">Retorna todos os usuários que têm permissão de acesso à empresa indicada.</p>
+          </div>
+          <div class="method-spec">
+            <span class="badge badge-delete">DELETE /{usuarioId}/vincular-empresa/{empresaId}</span> <code>desvincularUsuario(@PathVariable Long usuarioId, @PathVariable Long empresaId)</code>
+            <p style="margin-top: 6px;">Remove a permissão de acesso do usuário à empresa indicada.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 12. Frontend: Modelos e Interfaces -->
+      <section id="frontend-models">
+        <h2 class="section-title"><span class="section-num">12</span> Frontend: Interfaces TypeScript & Contratos</h2>
+        <p>Definições estritas localizadas no arquivo <code>frontend/src/app/models/models.ts</code>:</p>
+
+        <pre class="code-block"><code>// Interface da Empresa
+export interface Empresa {
+  id?: number;
+  razaoSocial: string;
+  cnpj: string;
+  dataInicioAtividade: string;
+}
+
+// Lançamento de Faturamento
+export interface FaturamentoMensal {
+  id?: number;
+  empresaId: number;
+  competencia: string; // Ex: "2026-05"
+  valor: number;
+}
+
+// Lançamento de Folha
+export interface FolhaPagamentoMensal {
+  id?: number;
+  empresaId: number;
+  competencia: string;
+  valor: number;
+}
+
+// Configurações e Parâmetros
+export interface ParametroTributario {
+  id?: number;
+  aliquotaPis: number;
+  aliquotaCofins: number;
+  aliquotaIss: number;
+  aliquotaIrpj: number;
+  aliquotaAdicionalIrpj: number;
+  aliquotaCsll: number;
+  faixas: FaixaTributaria[];
+  ativo: boolean;
+}
+
+export interface FaixaTributaria {
+  id?: number;
+  anexo: string;
+  numeroFaixa: number;
+  limiteSuperior?: number;
+  aliquotaNominal: number;
+  valorDeduzir: number;
+}
+
+// Resposta Consolidada da Simulação
+export interface SimulacaoTributaria {
+  empresaId: number;
+  razaoSocial: string;
+  cnpj: string;
+  competenciaReferencia: string;
+  mesesComDados: number;
+  totalFaturamento12Meses: number;
+  totalFolha12Meses: number;
+  rbt12: number;
+  faixaEncontrada: number;
+  mensagemFaixa6: string;
+  percentualFatorR: number;
+  anexoAplicavel: string;
+  alertaProximidadeLimite: boolean;
+  mensagemAlerta: string;
+  aliquotaEfetivaSimplesNacional: number;
+  valorEstimadoSimplesNacional: number;
+  aliquotaEfetivaLucroPresumido: number;
+  valorEstimadoLucroPresumido: number;
+  valorPis: number;
+  valorCofins: number;
+  valorIss: number;
+  valorIrpj: number;
+  valorCsll: number;
+  valorAdicionalIrpj: number;
+  economiaEstimada: number;
+  regimeMaisVantajoso: string;
+  mensagem: string;
+  historicoFaturamentos: FaturamentoHistorico[];
+}
+
+// Projeções Futuras
+export interface ProjecaoCenario {
+  nomeCenario: string;
+  descricao: string;
+  meses: MesProjecao[];
+}</code></pre>
+      </section>
+
+      <!-- 13. Frontend: Serviços Angular -->
+      <section id="frontend-services">
+        <h2 class="section-title"><span class="section-num">13</span> Frontend: Serviços & Gerenciamento de Estado</h2>
+        
+        <p>Serviços injetáveis do Angular gerenciando requisições HTTP e estado reativo com RxJS:</p>
+
+        <div class="card">
+          <h4><code>AuthService</code></h4>
+          <ul class="param-list">
+            <li><span class="param-name">currentUser$</span>: Observable reativo do usuário atualmente autenticado.</li>
+            <li><span class="param-name">login(cpf: string, senha: string)</span>: Executa POST em <code>/api/auth/login</code>, salva os dados no <code>localStorage</code> e emite no BehaviorSubject.</li>
+            <li><span class="param-name">logout()</span>: Limpa o <code>localStorage</code> e emite <code>null</code> no BehaviorSubject.</li>
+            <li><span class="param-name">getCurrentUser()</span>: Retorna o <code>AuthResponse</code> síncrono.</li>
+            <li><span class="param-name">isLoggedIn()</span>: Retorna <code>boolean</code> indicando se há usuário logado.</li>
+            <li><span class="param-name">isAdmin()</span>: Retorna <code>true</code> se o perfil for <code>ADMINISTRADOR_CONTABIL</code>.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>EmpresaContextService</code></h4>
+          <ul class="param-list">
+            <li><span class="param-name">empresaSelecionada$</span>: Observable reativo da empresa atualmente ativa em toda a interface.</li>
+            <li><span class="param-name">empresas$</span>: Observable com a lista completa de empresas carregadas.</li>
+            <li><span class="param-name">setEmpresas(empresas: Empresa[])</span>: Atualiza a lista e sincroniza a empresa selecionada com persistência no <code>localStorage</code>.</li>
+            <li><span class="param-name">setEmpresaSelecionada(empresa: Empresa | null)</span>: Define e persiste a empresa ativa.</li>
+            <li><span class="param-name">getEmpresaSelecionada()</span>: Retorna a empresa ativa atual.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>FatorRService</code></h4>
+          <ul class="param-list">
+            <li><span class="param-name">simularTributacao(empresaId, ano, mes)</span>: Chama <code>GET /api/empresas/{id}/simulacao-tributaria</code>.</li>
+            <li><span class="param-name">simularFuturo(empresaId, ano, mes)</span>: Chama <code>GET /api/empresas/{id}/simulacao-futura</code>.</li>
+            <li><span class="param-name">listarFaturamentos(empresaId)</span>: Chama <code>GET /api/faturamentos/empresa/{id}</code>.</li>
+            <li><span class="param-name">criarFaturamento(dto)</span>: Chama <code>POST /api/faturamentos</code>.</li>
+            <li><span class="param-name">excluirFaturamento(id)</span>: Chama <code>DELETE /api/faturamentos/{id}</code>.</li>
+            <li><span class="param-name">listarFolhas(empresaId)</span>: Chama <code>GET /api/folhas/empresa/{id}</code>.</li>
+            <li><span class="param-name">criarFolha(dto)</span>: Chama <code>POST /api/folhas</code>.</li>
+            <li><span class="param-name">excluirFolha(id)</span>: Chama <code>DELETE /api/folhas/{id}</code>.</li>
+            <li><span class="param-name">obterParametrosPadrao() / salvarParametrosPadrao(dto)</span>: Gerenciamento dos parâmetros padrão globais.</li>
+            <li><span class="param-name">obterParametrosPorEmpresa(id) / salvarParametrosPorEmpresa(id, dto)</span>: Gerenciamento dos parâmetros da empresa.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h4><code>UsuarioService</code></h4>
+          <ul class="param-list">
+            <li><span class="param-name">vincularEmpresa(dto: NovoUsuarioEmpresaDTO)</span>: Chama <code>POST /api/usuarios/vincular-empresa</code>.</li>
+            <li><span class="param-name">listarPorEmpresa(empresaId: number)</span>: Chama <code>GET /api/usuarios/empresa/{empresaId}</code>.</li>
+            <li><span class="param-name">listarTodos()</span>: Chama <code>GET /api/usuarios</code>.</li>
+            <li><span class="param-name">desvincularEmpresa(usuarioId, empresaId)</span>: Chama <code>DELETE /api/usuarios/{usuarioId}/vincular-empresa/{empresaId}</code>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 14. Frontend: Componentes -->
+      <section id="frontend-components">
+        <h2 class="section-title"><span class="section-num">14</span> Frontend: Componentes e Funcionalidades Visuais</h2>
+        
+        <div class="card-grid">
+          <div class="card">
+            <h4><code>MainLayoutComponent</code></h4>
+            <p>Componente mestre (wrapper). Contém:</p>
+            <ul style="margin-left: 20px; font-size: 0.875rem; color: var(--text-muted);">
+              <li>Barra de navegação lateral com menu condicional (Admin vs Empresa).</li>
+              <li>Header superior com <code>&lt;select&gt;</code> global de empresa ativa.</li>
+              <li>Exibição do CPF do usuário logado e botão de Logout seguro.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h4><code>LoginComponent</code></h4>
+            <p>Tela de entrada no sistema:</p>
+            <ul style="margin-left: 20px; font-size: 0.875rem; color: var(--text-muted);">
+              <li>Máscara de digitação automática para CPF (<code>000.000.000-00</code>).</li>
+              <li>Validação de credenciais com mensagem de erro contextual.</li>
+              <li>Redirecionamento dinâmico para <code>/home</code> após autenticação.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h4><code>SimuladorComponent</code></h4>
+            <p>Coração operacional da interface do usuário:</p>
+            <ul style="margin-left: 20px; font-size: 0.875rem; color: var(--text-muted);">
+              <li>Velocímetro Gauge animado com rotação proporcional e cor dinâmica (Verde &ge; 28%, Laranja 25%-28%, Vermelho &lt; 25%).</li>
+              <li>Card de Alerta visual para proximidade de margem de risco.</li>
+              <li>Tabela de Comparativo lado a lado: Simples Nacional vs Lucro Presumido com valor de economia calculada.</li>
+              <li>Formulários de lançamento rápido de Faturamento e Folha de Pagamento por competência.</li>
+              <li>Tabela com série histórica dos últimos 12 meses.</li>
+              <li>Painel de Projeções de Cenários Futuros (Otimista, Neutro e Pessimista) para os próximos 2 meses.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h4><code>EmpresasComponent</code></h4>
+            <p>Gestão completa de clientes:</p>
+            <ul style="margin-left: 20px; font-size: 0.875rem; color: var(--text-muted);">
+              <li>Tabela responsiva de empresas cadastradas.</li>
+              <li>Modal de cadastro com máscara de CNPJ e data de início de atividade.</li>
+              <li>Modal de gestão e vinculação de usuários clientes por CPF.</li>
+              <li>Ação de exclusão com confirmação em cascata (restrito a Admin).</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h4><code>ParametrosComponent</code> & <code>ParametrosPadraoComponent</code></h4>
+            <p>Tabelas de alíquotas fiscais:</p>
+            <ul style="margin-left: 20px; font-size: 0.875rem; color: var(--text-muted);">
+              <li>Edição de alíquotas de Lucro Presumido (PIS, COFINS, ISS, IRPJ, Adicional, CSLL).</li>
+              <li>Gerenciamento de faixas progressivas dos Anexos III e V (adicionar/remover/editar faixas).</li>
+              <li>Diferenciação clara entre parâmetros da empresa ativa e parâmetros padrão globais do sistema.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h4><code>UsuariosAdminComponent</code></h4>
+            <p>Painel de governança:</p>
+            <ul style="margin-left: 20px; font-size: 0.875rem; color: var(--text-muted);">
+              <li>Listagem unificada de todos os usuários do sistema.</li>
+              <li>Badges de perfil (Administrador Contábil vs Usuário Empresa).</li>
+              <li>Visualização detalhada das empresas às quais cada usuário tem acesso.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 15. Frontend: Roteamento -->
+      <section id="frontend-routes">
+        <h2 class="section-title"><span class="section-num">15</span> Frontend: Roteamento & Guards de Segurança</h2>
+        
+        <p>Configuração das rotas SPA e proteção com <code>AuthGuard</code> (em <code>frontend/src/app/app.routes.ts</code>):</p>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Caminho (Path)</th>
+                <th>Componente</th>
+                <th>Guards</th>
+                <th>Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>/login</code></td><td><code>LoginComponent</code></td><td>Pública</td><td>Tela de autenticação.</td></tr>
+              <tr><td><code>/home</code></td><td><code>HomeComponent</code></td><td><code>AuthGuard</code></td><td>Dashboard de boas-vindas com cards de atalho.</td></tr>
+              <tr><td><code>/simulador</code></td><td><code>SimuladorComponent</code></td><td><code>AuthGuard</code></td><td>Simulador tributário, Fator R, histórico e projeções.</td></tr>
+              <tr><td><code>/empresas</code></td><td><code>EmpresasComponent</code></td><td><code>AuthGuard</code></td><td>Cadastro de empresas e gestão de usuários vinculados.</td></tr>
+              <tr><td><code>/parametros</code></td><td><code>ParametrosComponent</code></td><td><code>AuthGuard</code></td><td>Edição dos parâmetros tributários da empresa ativa.</td></tr>
+              <tr><td><code>/parametros-padrao</code></td><td><code>ParametrosPadraoComponent</code></td><td><code>AuthGuard</code></td><td>Edição dos parâmetros globais do sistema (Admin).</td></tr>
+              <tr><td><code>/usuarios-admin</code></td><td><code>UsuariosAdminComponent</code></td><td><code>AuthGuard</code></td><td>Painel administrativo de usuários e acessos.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 16. Catálogo de Endpoints REST -->
+      <section id="api-endpoints">
+        <h2 class="section-title"><span class="section-num">16</span> Catálogo Completo da API REST</h2>
+        
+        <p>Documentação dos payloads e formatos de troca de mensagens JSON:</p>
+
+        <!-- Exemplo Simulacao -->
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="badge badge-get">GET</span>
+            <span class="method-name">/api/empresas/{id}/simulacao-tributaria?ano=2026&mes=5</span>
+          </div>
+          <p><strong>Payload de Resposta (Status 200 OK):</strong></p>
+          <pre class="code-block"><code>{
+  "empresaId": 1,
+  "razaoSocial": "Empresa Teste Ltda",
+  "cnpj": "12.345.678/0001-99",
+  "competenciaReferencia": "2026-05",
+  "mesesComDados": 12,
+  "totalFaturamento12Meses": 100000.00,
+  "totalFolha12Meses": 30000.00,
+  "rbt12": 100000.00,
+  "faixaEncontrada": 1,
+  "mensagemFaixa6": null,
+  "percentualFatorR": 30.00,
+  "anexoAplicavel": "Anexo III",
+  "alertaProximidadeLimite": true,
+  "mensagemAlerta": "ATENÇÃO: O Fator R está em 30.00%, pouco acima do limite de 28%. Se a folha de pagamento diminuir, a empresa pode voltar ao Anexo V.",
+  "aliquotaEfetivaSimplesNacional": 6.00,
+  "valorEstimadoSimplesNacional": 600.00,
+  "aliquotaEfetivaLucroPresumido": 16.33,
+  "valorEstimadoLucroPresumido": 1633.00,
+  "valorPis": 65.00,
+  "valorCofins": 300.00,
+  "valorIss": 500.00,
+  "valorIrpj": 480.00,
+  "valorCsll": 288.00,
+  "valorAdicionalIrpj": 0.00,
+  "economiaEstimada": 1033.00,
+  "regimeMaisVantajoso": "Simples Nacional",
+  "mensagem": "Fator R igual ou superior a 28%. Tributação pelo Anexo III (mais vantajoso).",
+  "historicoFaturamentos": [
+    { "competencia": "2025-05", "faturamento": 8333.33, "folhaPagamento": 2500.00 },
+    { "competencia": "2026-05", "faturamento": 10000.00, "folhaPagamento": 3000.00 }
+  ]
+}</code></pre>
+        </div>
+
+        <!-- Exemplo Login -->
+        <div class="method-spec">
+          <div class="method-header">
+            <span class="badge badge-post">POST</span>
+            <span class="method-name">/api/auth/login</span>
+          </div>
+          <p><strong>Payload de Entrada (Request Body):</strong></p>
+          <pre class="code-block"><code>{
+  "cpf": "00000000000",
+  "senha": "admin123"
+}</code></pre>
+          <p><strong>Payload de Saída (Response Body - 200 OK):</strong></p>
+          <pre class="code-block"><code>{
+  "id": 1,
+  "cpf": "00000000000",
+  "tipo": "ADMINISTRADOR_CONTABIL",
+  "token": "dummy-token-1"
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 17. Guia de Instalação e Execução -->
+      <section id="instalacao-execucao">
+        <h2 class="section-title"><span class="section-num">17</span> Guia de Instalação e Execução Passo a Passo</h2>
+        
+        <div class="formula-card">
+          <h4>Passo 1: Subir o PostgreSQL via Docker</h4>
+          <pre class="code-block"><code>docker-compose up -d</code></pre>
+        </div>
+
+        <div class="formula-card">
+          <h4>Passo 2: Iniciar a API Backend (Spring Boot)</h4>
+          <pre class="code-block"><code>cd backend
+# Windows
+.\mvnw.cmd spring-boot:run
+# Linux / macOS
+./mvnw spring-boot:run</code></pre>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">O backend inicializará na porta <strong>8080</strong> e criará automaticamente as tabelas e o usuário administrador padrão (<code>CPF: 00000000000 / Senha: admin123</code>).</p>
+        </div>
+
+        <div class="formula-card">
+          <h4>Passo 3: Iniciar a Aplicação Frontend (Angular)</h4>
+          <pre class="code-block"><code>cd frontend
+npm install
+npm start</code></pre>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Acesse a interface no navegador em: <a href="http://localhost:4200" target="_blank" style="color: var(--primary);">http://localhost:4200</a>.</p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- JavaScript Interativo (Busca Rápida e Scroll Suave) -->
+  <script>
+    function filtrarDocumentacao() {
+      const termo = document.getElementById('searchInput').value.toLowerCase();
+      const secoes = document.querySelectorAll('main.content section');
+      const navLinks = document.querySelectorAll('.nav-links li:not(.nav-group-title)');
+
+      secoes.forEach(secao => {
+        const texto = secao.innerText.toLowerCase();
+        if (texto.includes(termo)) {
+          secao.style.display = 'block';
+        } else {
+          secao.style.display = 'none';
+        }
+      });
+
+      navLinks.forEach(link => {
+        const texto = link.innerText.toLowerCase();
+        if (texto.includes(termo)) {
+          link.style.display = 'block';
+        } else {
+          link.style.display = 'none';
+        }
+      });
+    }
+
+    // Highlight no menu ao navegar
+    document.addEventListener('DOMContentLoaded', () => {
+      const links = document.querySelectorAll('.nav-links a');
+      links.forEach(link => {
+        link.addEventListener('click', function() {
+          links.forEach(l => l.classList.remove('active'));
+          this.classList.add('active');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

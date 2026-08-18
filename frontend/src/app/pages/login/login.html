@@ -1,0 +1,42 @@
+<div class="login-container">
+  <div class="glass-card">
+    <div class="logo-area">
+      <div class="logo-icon"></div>
+      <h1>Fator R</h1>
+      <p>Gestão Tributária Inteligente</p>
+    </div>
+
+    <form (ngSubmit)="fazerLogin()" class="login-form">
+      <div *ngIf="erro" class="alert-error">
+        {{ erro }}
+      </div>
+
+      <div class="form-group">
+        <label for="cpf">CPF</label>
+        <input 
+          type="text" 
+          id="cpf" 
+          name="cpf" 
+          [(ngModel)]="cpf" 
+          placeholder="000.000.000-00"
+          autocomplete="off"
+          maxlength="14"
+          (input)="aplicarMascaraCPF($event)">
+      </div>
+
+      <div class="form-group">
+        <label for="senha">Senha</label>
+        <input 
+          type="password" 
+          id="senha" 
+          name="senha" 
+          [(ngModel)]="senha" 
+          placeholder="Sua senha de acesso">
+      </div>
+
+      <button type="submit" class="btn-primary" [disabled]="carregando">
+        {{ carregando ? 'Autenticando...' : 'Entrar' }}
+      </button>
+    </form>
+  </div>
+</div>

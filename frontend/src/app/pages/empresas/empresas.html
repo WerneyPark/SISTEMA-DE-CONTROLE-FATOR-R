@@ -1,0 +1,116 @@
+<div class="empresas-container">
+  <div class="page-header">
+    <h2>Empresas Cadastradas</h2>
+    <button class="btn btn-primary" *ngIf="isAdmin" (click)="abrirModalEmpresa()">+ Nova Empresa</button>
+  </div>
+
+  <div class="alert alert-error" *ngIf="erro">
+    <span>{{ erro }}</span>
+    <button class="btn-close" (click)="erro = null">&times;</button>
+  </div>
+  <div class="alert alert-success" *ngIf="sucesso">
+    <span>{{ sucesso }}</span>
+  </div>
+
+  <div class="empresas-grid">
+    <div class="empresa-card" *ngFor="let empresa of empresas">
+      <div class="empresa-icon">
+        {{ empresa.razaoSocial.substring(0,2).toUpperCase() }}
+      </div>
+      <div class="empresa-info">
+        <h3>{{ empresa.razaoSocial }}</h3>
+        <p>CNPJ: {{ empresa.cnpj }}</p>
+        <p *ngIf="empresa.dataInicioAtividade">Abertura: {{ empresa.dataInicioAtividade }}</p>
+      </div>
+      <div class="empresa-actions" *ngIf="isAdmin">
+        <button class="btn btn-secondary btn-sm" (click)="abrirModalUsuario(empresa)">Gerenciar Acessos</button>
+        <button class="btn btn-danger btn-sm" (click)="excluirEmpresa(empresa)" style="margin-left: 8px;">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL NOVA EMPRESA -->
+  <div class="modal-overlay" *ngIf="mostrarModalEmpresa" (click)="fecharModalEmpresa()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nova Empresa</h3>
+        <button class="modal-close" (click)="fecharModalEmpresa()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Razão Social</label>
+          <input type="text" [(ngModel)]="novaEmpresaForm.razaoSocial" placeholder="Nome da Empresa LTDA">
+        </div>
+        <div class="form-group" style="margin-top: 16px;">
+          <label>CNPJ</label>
+          <input type="text" [(ngModel)]="novaEmpresaForm.cnpj" placeholder="00.000.000/0000-00" maxlength="18" (input)="aplicarMascaraCNPJ($event)">
+        </div>
+        <div class="form-group" style="margin-top: 16px;">
+          <label>Mês de Abertura (Opcional)</label>
+          <input type="month" [(ngModel)]="novaEmpresaForm.dataInicioAtividade">
+          <span class="input-hint">Usado para calcular a Receita Proporcional (RBT12).</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="fecharModalEmpresa()">Cancelar</button>
+        <button class="btn btn-primary" (click)="salvarNovaEmpresa()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL VINCULAR USUÁRIO -->
+  <div class="modal-overlay" *ngIf="mostrarModalUsuario" (click)="fecharModalUsuario()">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Gerenciar Acessos</h3>
+        <button class="modal-close" (click)="fecharModalUsuario()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 16px; color: #94a3b8; font-size: 14px;">
+          Acessos para a empresa <strong>{{ empresaSelecionadaParaAcesso?.razaoSocial }}</strong>.
+        </p>
+
+        <!-- Lista de Usuários Existentes -->
+        <div class="usuarios-list" *ngIf="usuariosVinculados.length > 0">
+          <h4 style="margin-bottom: 8px;">Usuários Vinculados</h4>
+          <table class="table" style="width: 100%; text-align: left; margin-bottom: 16px;">
+            <thead>
+              <tr>
+                <th>CPF</th>
+                <th>Tipo</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let user of usuariosVinculados">
+                <td>{{ user.cpf }}</td>
+                <td>{{ user.tipo }}</td>
+                <td>
+                  <button class="btn btn-danger btn-sm" (click)="desvincularUsuario(user.id!)">Desvincular</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p *ngIf="usuariosVinculados.length === 0" style="margin-bottom: 16px;">Nenhum usuário vinculado.</p>
+
+        <hr style="border: 1px solid #334155; margin-bottom: 16px;">
+
+        <h4 style="margin-bottom: 8px;">Vincular Novo Acesso</h4>
+        <div class="form-group">
+          <label>CPF do Usuário (Login)</label>
+          <input type="text" [(ngModel)]="novoUsuarioForm.cpf" placeholder="000.000.000-00" maxlength="14" (input)="aplicarMascaraCPF($event)">
+        </div>
+        <div class="form-group" style="margin-top: 16px;">
+          <label>Senha</label>
+          <input type="password" [(ngModel)]="novoUsuarioForm.senha">
+          <span class="input-hint">Para atualizar a senha de um usuário existente, preencha este campo.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="fecharModalUsuario()">Fechar</button>
+        <button class="btn btn-primary" (click)="vincularNovoUsuario()">Vincular Acesso</button>
+      </div>
+    </div>
+  </div>
+</div>

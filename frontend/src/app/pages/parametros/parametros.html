@@ -1,0 +1,122 @@
+<div class="parametros-container">
+  <div class="page-header" *ngIf="empresaSelecionada">
+    <h2>Parâmetros Específicos: {{ empresaSelecionada.razaoSocial }}</h2>
+    <button class="btn btn-primary" *ngIf="isAdmin" (click)="salvarParametros()">Salvar Específico</button>
+  </div>
+
+  <div class="alert alert-error" *ngIf="erro">
+    <span>{{ erro }}</span>
+    <button class="btn-close" (click)="erro = null">&times;</button>
+  </div>
+  <div class="alert alert-success" *ngIf="sucesso">
+    <span>{{ sucesso }}</span>
+  </div>
+
+  <div *ngIf="!empresaSelecionada" class="alert alert-warning" style="margin-bottom: 24px;">
+    Selecione uma empresa no topo da página para visualizar/editar seus parâmetros específicos.
+  </div>
+
+  <div *ngIf="!isAdmin" class="alert alert-warning" style="margin-bottom: 24px;">
+    Apenas Administradores podem editar estas alíquotas.
+  </div>
+
+  <div *ngIf="empresaSelecionada && usandoPadrao" class="alert alert-info" style="margin-bottom: 24px;">
+    <strong>Atenção:</strong> Esta empresa está utilizando os <strong>Parâmetros Padrão</strong> do sistema. 
+    Se você alterar e salvar, ela passará a ter parâmetros específicos.
+  </div>
+
+  <div *ngIf="empresaSelecionada && !usandoPadrao" class="alert alert-success" style="margin-bottom: 24px;">
+    Esta empresa possui uma configuração <strong>específica</strong> de parâmetros.
+  </div>
+
+  <!-- Lucro Presumido -->
+  <div class="card param-section">
+    <h3>Lucro Presumido</h3>
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px;">
+      <div class="form-group" style="flex: 1; min-width: 150px;">
+        <label>PIS (%)</label>
+        <input type="number" step="0.01" [(ngModel)]="parametrosForm.aliquotaPis" [disabled]="!isAdmin || !empresaSelecionada">
+      </div>
+      <div class="form-group" style="flex: 1; min-width: 150px;">
+        <label>COFINS (%)</label>
+        <input type="number" step="0.01" [(ngModel)]="parametrosForm.aliquotaCofins" [disabled]="!isAdmin || !empresaSelecionada">
+      </div>
+      <div class="form-group" style="flex: 1; min-width: 150px;">
+        <label>ISS (%)</label>
+        <input type="number" step="0.01" [(ngModel)]="parametrosForm.aliquotaIss" [disabled]="!isAdmin || !empresaSelecionada">
+      </div>
+      <div class="form-group" style="flex: 1; min-width: 150px;">
+        <label>IRPJ (%)</label>
+        <input type="number" step="0.01" [(ngModel)]="parametrosForm.aliquotaIrpj" [disabled]="!isAdmin || !empresaSelecionada">
+      </div>
+      <div class="form-group" style="flex: 1; min-width: 150px;">
+        <label>Adicional IRPJ (%)</label>
+        <input type="number" step="0.01" [(ngModel)]="parametrosForm.aliquotaAdicionalIrpj" [disabled]="!isAdmin || !empresaSelecionada">
+      </div>
+      <div class="form-group" style="flex: 1; min-width: 150px;">
+        <label>CSLL (%)</label>
+        <input type="number" step="0.01" [(ngModel)]="parametrosForm.aliquotaCsll" [disabled]="!isAdmin || !empresaSelecionada">
+      </div>
+    </div>
+  </div>
+
+  <!-- ANEXO III -->
+  <div class="card param-section">
+    <h3>Tabela Anexo III (Serviços Sujeitos ao Fator R)</h3>
+    <table class="faixas-table">
+      <thead>
+        <tr>
+          <th>Faixa</th>
+          <th>Limite Superior (R$)</th>
+          <th>Alíquota Nominal (%)</th>
+          <th>Valor a Deduzir (R$)</th>
+          <th *ngIf="isAdmin">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let faixa of getFaixas('Anexo III')">
+          <td>{{ faixa.numeroFaixa }}ª</td>
+          <td><input type="number" [(ngModel)]="faixa.limiteSuperior" [disabled]="!isAdmin || !empresaSelecionada"></td>
+          <td><input type="number" step="0.01" [(ngModel)]="faixa.aliquotaNominal" [disabled]="!isAdmin || !empresaSelecionada"></td>
+          <td><input type="number" step="0.01" [(ngModel)]="faixa.valorDeduzir" [disabled]="!isAdmin || !empresaSelecionada"></td>
+          <td *ngIf="isAdmin">
+            <button class="btn btn-danger btn-sm" (click)="removerFaixa(faixa)">Remover</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top: 10px;" *ngIf="isAdmin">
+      <button class="btn btn-secondary btn-sm" (click)="adicionarFaixa('Anexo III')">+ Nova Faixa</button>
+    </div>
+  </div>
+
+  <!-- ANEXO V -->
+  <div class="card param-section">
+    <h3>Tabela Anexo V (Serviços - Sem Fator R)</h3>
+    <table class="faixas-table">
+      <thead>
+        <tr>
+          <th>Faixa</th>
+          <th>Limite Superior (R$)</th>
+          <th>Alíquota Nominal (%)</th>
+          <th>Valor a Deduzir (R$)</th>
+          <th *ngIf="isAdmin">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let faixa of getFaixas('Anexo V')">
+          <td>{{ faixa.numeroFaixa }}ª</td>
+          <td><input type="number" [(ngModel)]="faixa.limiteSuperior" [disabled]="!isAdmin || !empresaSelecionada"></td>
+          <td><input type="number" step="0.01" [(ngModel)]="faixa.aliquotaNominal" [disabled]="!isAdmin || !empresaSelecionada"></td>
+          <td><input type="number" step="0.01" [(ngModel)]="faixa.valorDeduzir" [disabled]="!isAdmin || !empresaSelecionada"></td>
+          <td *ngIf="isAdmin">
+            <button class="btn btn-danger btn-sm" (click)="removerFaixa(faixa)">Remover</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top: 10px;" *ngIf="isAdmin">
+      <button class="btn btn-secondary btn-sm" (click)="adicionarFaixa('Anexo V')">+ Nova Faixa</button>
+    </div>
+  </div>
+</div>
