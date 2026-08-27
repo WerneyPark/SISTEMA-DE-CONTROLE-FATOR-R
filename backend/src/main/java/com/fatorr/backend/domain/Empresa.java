@@ -18,11 +18,20 @@ public class Empresa {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "uuid_id", length = 36)
+    private String uuidId;
+
+    @Column(name = "razao_social", nullable = false)
     private String razaoSocial;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "nome_fantasia")
+    private String nomeFantasia;
+
+    @Column(nullable = false, unique = true, length = 20)
     private String cnpj;
+
+    @Column(name = "organizacao_contabil_id", length = 36)
+    private String organizacaoContabilId;
 
     @Column(name = "data_inicio_atividade")
     private java.time.LocalDate dataInicioAtividade;

@@ -19,16 +19,42 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "uuid_id", length = 36)
+    private String uuidId;
+
+    private String nome;
+
+    @Column(unique = true)
+    private String email;
+
+    @Column(nullable = false, unique = true, length = 14)
     private String cpf;
 
-    @Column(nullable = false)
     @JsonIgnore
     private String senha;
 
+    @Column(name = "senha_hash")
+    @JsonIgnore
+    private String senhaHash;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TipoUsuario tipo;
+    @Column(name = "tipo_perfil")
+    private TipoPerfil tipoPerfil;
+
+    @Enumerated(EnumType.STRING)
+    private TipoUsuario tipo; // Compatibilidade legada
+
+    @Column(name = "organizacao_contabil_id", length = 36)
+    private String organizacaoContabilId;
+
+    @Enumerated(EnumType.STRING)
+    private StatusUsuario status = StatusUsuario.ATIVO;
+
+    @Column(name = "reset_password_token")
+    private String resetPasswordToken;
+
+    @Column(name = "reset_password_expires")
+    private java.time.LocalDateTime resetPasswordExpires;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

@@ -6,6 +6,7 @@ import { AuthService } from '../../services/auth.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
 import { UsuarioService, Usuario, NovoUsuarioEmpresaDTO } from '../../services/usuario.service';
 import { Empresa } from '../../models/models';
+import { maskCnpj } from '../../shared/utils/cnpj';
 
 @Component({
   selector: 'app-empresas',
@@ -62,13 +63,7 @@ export class EmpresasComponent implements OnInit {
   }
 
   aplicarMascaraCNPJ(event: any): void {
-    let valor = event.target.value.replace(/\D/g, '');
-    if (valor.length > 14) valor = valor.substring(0, 14);
-    valor = valor.replace(/^(\d{2})(\d)/, '$1.$2');
-    valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-    valor = valor.replace(/\.(\d{3})(\d)/, '.$1/$2');
-    valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
-    this.novaEmpresaForm.cnpj = valor;
+    this.novaEmpresaForm.cnpj = maskCnpj(event.target.value);
   }
 
   salvarNovaEmpresa(): void {
