@@ -88,6 +88,16 @@ A base de código está logicamente separada em cliente e servidor.
 - `pages/` e `layout/`: Componentes visuais.
 - `app.routes.ts`: Configuração do Angular Router.
 
+### Padronização de Tipos de Dados (CPF e CNPJ como String)
+- **CPF**:
+  - Representado estritamente como `String` (backend `java.lang.String`, frontend TypeScript `string`, banco `VARCHAR(14)`).
+  - Tráfego na API e armazenamento no banco de dados são feitos **sempre sem pontuação** (11 dígitos numéricos limpos).
+  - Higienização e validação centralizadas via `CpfUtils` no backend (`unmask`, `mask`, `isValid`) e `formatters.ts` (`unmaskCpf`, `maskCpf`, `isValidCpf`) no frontend.
+- **CNPJ**:
+  - Representado estritamente como `String` (backend `java.lang.String`, frontend TypeScript `string`, banco `VARCHAR(20)`).
+  - Suporta o novo padrão alfanumérico da Receita Federal do Brasil (14 caracteres alfanuméricos em caixa alta).
+  - Higienização e validação centralizadas via `CnpjUtils` no backend e `cnpj.ts` no frontend.
+
 ---
 
 ## 5. Especificação Técnica (Classes, Módulos e Funções)

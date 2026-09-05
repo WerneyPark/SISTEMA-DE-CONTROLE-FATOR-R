@@ -6,6 +6,7 @@ import com.fatorr.backend.domain.Usuario;
 import com.fatorr.backend.dto.NovoUsuarioEmpresaDTO;
 import com.fatorr.backend.repository.EmpresaRepository;
 import com.fatorr.backend.repository.UsuarioRepository;
+import com.fatorr.backend.util.CpfUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +36,8 @@ public class UsuarioController {
         Empresa empresa = empresaOpt.get();
         Usuario usuario;
 
-        Optional<Usuario> usuarioOpt = usuarioRepository.findByCpf(dto.getCpf());
+        String cleanCpf = CpfUtils.unmask(dto.getCpf());
+        Optional<Usuario> usuarioOpt = usuarioRepository.findByCpf(cleanCpf);
         if (usuarioOpt.isPresent()) {
             usuario = usuarioOpt.get();
             // Se o usuário já existe, atualizamos a senha (opcional, dependendo da regra de negócio)
@@ -45,7 +47,7 @@ public class UsuarioController {
             }
         } else {
             usuario = new Usuario();
-            usuario.setCpf(dto.getCpf());
+            usuario.setCpf(cleanCpf);
             usuario.setSenha(dto.getSenha());
             usuario.setTipo(TipoUsuario.USUARIO_EMPRESA);
         }

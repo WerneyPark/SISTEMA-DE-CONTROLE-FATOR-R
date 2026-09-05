@@ -20,7 +20,7 @@ VALUES (
     'usr-contador-uuid-0001',
     'Contador Chefe',
     'contador@teste.com',
-    '111.222.333-44',
+    '11122233344',
     '123456', -- Em ambiente de produção utilizar Hash BCrypt
     'CONTABILISTA',
     'org-modelo-uuid-0001',
@@ -61,7 +61,7 @@ VALUES (
     'usr-empresario-uuid-0002',
     'Empresário Silva',
     'empresario@teste.com',
-    '222.333.444-55',
+    '22233344455',
     '123456',
     'EMPRESARIO',
     'ATIVO',
@@ -101,7 +101,7 @@ VALUES (
     'usr-colaborador-uuid-0003',
     'Colaborador Convidado',
     'operador@teste.com',
-    '999.888.777-66',
+    '99988877766',
     NULL, -- Pendente de cadastro de senha pelo usuário
     'USUARIO',
     'PENDENTE_CADASTRO',

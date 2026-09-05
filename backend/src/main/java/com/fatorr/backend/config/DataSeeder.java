@@ -76,13 +76,18 @@ public class DataSeeder implements CommandLineRunner {
             });
 
         // 2. Usuário Contabilista (Admin Master)
-        Usuario contador = usuarioRepository.findByCpf("111.222.333-44")
+        Usuario contador = usuarioRepository.findByCpf("11122233344")
+            .or(() -> usuarioRepository.findByEmail("contador@teste.com"))
+            .map(u -> {
+                u.setCpf("11122233344");
+                return usuarioRepository.save(u);
+            })
             .orElseGet(() -> {
                 Usuario u = new Usuario();
                 u.setUuidId("usr-contador-uuid-0001");
                 u.setNome("Contador Chefe");
                 u.setEmail("contador@teste.com");
-                u.setCpf("111.222.333-44");
+                u.setCpf("11122233344");
                 u.setSenha("123456");
                 u.setSenhaHash("123456");
                 u.setTipoPerfil(TipoPerfil.CONTABILISTA);
@@ -118,13 +123,18 @@ public class DataSeeder implements CommandLineRunner {
             });
 
         // 4. Usuário Empresário
-        Usuario empresario = usuarioRepository.findByCpf("222.333.444-55")
+        Usuario empresario = usuarioRepository.findByCpf("22233344455")
+            .or(() -> usuarioRepository.findByEmail("empresario@teste.com"))
+            .map(u -> {
+                u.setCpf("22233344455");
+                return usuarioRepository.save(u);
+            })
             .orElseGet(() -> {
                 Usuario u = new Usuario();
                 u.setUuidId("usr-empresario-uuid-0002");
                 u.setNome("Empresário Silva");
                 u.setEmail("empresario@teste.com");
-                u.setCpf("222.333.444-55");
+                u.setCpf("22233344455");
                 u.setSenha("123456");
                 u.setSenhaHash("123456");
                 u.setTipoPerfil(TipoPerfil.EMPRESARIO);
@@ -163,13 +173,18 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         // 5. Usuário Colaborador Pré-Cadastrado por CPF
-        Usuario colaborador = usuarioRepository.findByCpf("999.888.777-66")
+        Usuario colaborador = usuarioRepository.findByCpf("99988877766")
+            .or(() -> usuarioRepository.findByEmail("operador@teste.com"))
+            .map(u -> {
+                u.setCpf("99988877766");
+                return usuarioRepository.save(u);
+            })
             .orElseGet(() -> {
                 Usuario u = new Usuario();
                 u.setUuidId("usr-colaborador-uuid-0003");
                 u.setNome("Colaborador Convidado");
                 u.setEmail("operador@teste.com");
-                u.setCpf("999.888.777-66");
+                u.setCpf("99988877766");
                 u.setSenha(""); // Vazia/Pendente de definição pelo convidado
                 u.setTipoPerfil(TipoPerfil.USUARIO);
                 u.setTipo(TipoUsuario.USUARIO_EMPRESA);

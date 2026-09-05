@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { UsuarioService } from '../../services/usuario.service';
 import { UsuarioAdmin } from '../../models/models';
+import { maskCpf } from '../../shared/utils/formatters';
+import { maskCnpj } from '../../shared/utils/cnpj';
 
 @Component({
   selector: 'app-usuarios-admin',
@@ -15,6 +17,14 @@ export class UsuariosAdminComponent implements OnInit {
   loading = true;
 
   constructor(private usuarioService: UsuarioService) {}
+
+  formatarCpf(cpf: string): string {
+    return maskCpf(cpf);
+  }
+
+  formatarCnpj(cnpj: string): string {
+    return maskCnpj(cnpj);
+  }
 
   ngOnInit() {
     this.carregarUsuarios();
