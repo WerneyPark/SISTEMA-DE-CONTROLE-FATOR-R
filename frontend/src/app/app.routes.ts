@@ -8,6 +8,7 @@ import { LoginComponent } from './pages/login/login';
 import { ParametrosPadraoComponent } from './pages/parametros-padrao/parametros-padrao';
 import { UsuariosAdminComponent } from './pages/usuarios-admin/usuarios-admin';
 import { AuthGuard } from './services/auth.guard';
+import { ContasAReceberComponent } from './pages/contas-a-receber/contas-a-receber';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -23,6 +24,7 @@ export const routes: Routes = [
       { path: 'parametros', component: ParametrosComponent },
       { path: 'parametros-padrao', component: ParametrosPadraoComponent },
       { path: 'usuarios-admin', component: UsuariosAdminComponent },
+      { path: 'contas-a-receber', component: ContasAReceberComponent },
       { path: 'dashboard', redirectTo: 'home', pathMatch: 'full' }
     ]
   }

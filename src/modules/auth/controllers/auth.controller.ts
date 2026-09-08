@@ -10,6 +10,7 @@ import {
   LoginResponseDTO 
 } from '../../../shared/types/auth.types';
 import { ApiResponse } from '../../../shared/types/common.types';
+import { BaixarContaReceberDTO } from '../../../shared/types/receivables.types';
 import { AuthService } from '../services/auth.service';
 
 export class AuthController {

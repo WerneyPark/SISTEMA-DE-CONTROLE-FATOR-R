@@ -1,0 +1,10 @@
+.receber-page { padding: 28px; }
+.eyebrow { color: #38bdf8; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; margin: 0; }
+.toolbar, .form-panel { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 20px 0; }
+.toolbar input, .toolbar select, .form-panel input { padding: 9px; border: 1px solid #cbd5e1; border-radius: 4px; }
+.form-panel { padding: 18px; background: #f8fafc; border: 1px solid #e2e8f0; }
+.upload { cursor: pointer; font-weight: 600; }.upload input { width: 170px; }
+.table-wrap { overflow-x: auto; background: white; border: 1px solid #e2e8f0; }
+table { width: 100%; border-collapse: collapse; text-align: left; } th, td { padding: 13px 15px; border-bottom: 1px solid #e2e8f0; }
+.status { padding: 4px 8px; border-radius: 12px; background: #fef3c7; color: #92400e; font-size: 12px; }.status.paid { background: #dcfce7; color: #166534; }
+.empty { text-align: center; color: #64748b; padding: 32px; }.pagination { display: flex; justify-content: center; gap: 18px; align-items: center; padding: 18px; }

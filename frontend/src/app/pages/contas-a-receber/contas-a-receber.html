@@ -1,0 +1,42 @@
+<section class="receber-page">
+  <header class="page-header">
+    <div><p class="eyebrow">Financeiro</p><h2>Contas a receber</h2></div>
+    <button class="btn btn-primary" (click)="mostrarFormulario = !mostrarFormulario">Nova conta</button>
+  </header>
+
+  <div class="alert alert-error" *ngIf="erro">{{ erro }}</div>
+  <div class="alert alert-success" *ngIf="sucesso">{{ sucesso }}</div>
+
+  <div class="toolbar">
+    <select [(ngModel)]="status" (change)="pagina = 0; carregar()">
+      <option value="">Todos os status</option><option value="PENDENTE">Pendente</option>
+      <option value="PAGO">Pago</option><option value="CANCELADO">Cancelado</option>
+    </select>
+    <label>De <input type="date" [(ngModel)]="inicio"></label>
+    <label>Até <input type="date" [(ngModel)]="fim"></label>
+    <button class="btn btn-secondary" (click)="pagina = 0; carregar()">Filtrar</button>
+    <label class="upload">Importar XML <input type="file" accept=".xml,text/xml" (change)="selecionarArquivo($event)"></label>
+    <button class="btn btn-secondary" [disabled]="!arquivo" (click)="importar()">Enviar XML</button>
+  </div>
+
+  <form class="form-panel" *ngIf="mostrarFormulario" (ngSubmit)="salvar()">
+    <input placeholder="ID do cliente" [(ngModel)]="novaConta.clienteId" name="clienteId" required>
+    <input placeholder="Documento" [(ngModel)]="novaConta.numeroDocumento" name="documento">
+    <input type="number" min="0.01" step="0.01" placeholder="Valor" [(ngModel)]="novaConta.valorTotal" name="valor" required>
+    <input type="date" [(ngModel)]="novaConta.dataEmissao" name="emissao" required>
+    <input type="date" [(ngModel)]="novaConta.dataVencimento" name="vencimento" required>
+    <button class="btn btn-primary" type="submit">Salvar</button>
+  </form>
+
+  <div class="table-wrap">
+    <table><thead><tr><th>Documento</th><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+      <tbody><tr *ngFor="let conta of contas"><td>{{ conta.numeroDocumento || '-' }}</td><td>{{ conta.clienteNome || conta.clienteId }}</td>
+        <td>{{ conta.dataVencimento | date:'dd/MM/yyyy' }}</td><td>{{ conta.valorTotal | currency:'BRL' }}</td>
+        <td><span class="status" [class.paid]="conta.status === 'PAGO'">{{ conta.status }}</span></td>
+        <td><button class="btn btn-secondary btn-sm" *ngIf="conta.status === 'PENDENTE'" (click)="baixar(conta)">Baixar</button></td></tr>
+        <tr *ngIf="contas.length === 0"><td colspan="6" class="empty">Nenhuma conta encontrada.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <footer class="pagination"><button class="btn btn-secondary" (click)="paginaAnterior()">Anterior</button><span>Página {{ pagina + 1 }} de {{ totalPaginas || 1 }}</span><button class="btn btn-secondary" (click)="proximaPagina()">Próxima</button></footer>
+</section>
