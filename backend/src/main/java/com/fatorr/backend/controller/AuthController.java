@@ -4,6 +4,7 @@ import com.fatorr.backend.domain.Usuario;
 import com.fatorr.backend.dto.AuthResponseDTO;
 import com.fatorr.backend.dto.LoginDTO;
 import com.fatorr.backend.repository.UsuarioRepository;
+import com.fatorr.backend.util.CpfUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,8 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginDTO loginDto) {
-        Optional<Usuario> usuarioOpt = usuarioRepository.findByCpf(loginDto.getCpf());
+        String cpfLimpo = CpfUtils.unmask(loginDto.getCpf());
+        Optional<Usuario> usuarioOpt = usuarioRepository.findByCpf(cpfLimpo);
         
         if (usuarioOpt.isPresent()) {
             Usuario usuario = usuarioOpt.get();

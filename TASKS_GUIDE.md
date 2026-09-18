@@ -8,16 +8,22 @@ Este documento contém o roadmap, as regras de arquitetura e as instruções par
 
 1. **CNPJ Alfanumérico (Padrão RFB)**:
    - Todo campo de CNPJ no banco, backend e frontend é do tipo `String / VARCHAR(20)`.
-   - Utilize sempre as funções de `src/shared/utils/cnpj.ts`:
+   - Utilize sempre as funções de `src/shared/utils/cnpj.ts` (frontend/shared) e `com.fatorr.backend.util.CnpjUtils` (backend):
      - `maskCnpj(valor)`: Aplica a máscara `XX.XXX.XXX/XXXX-XX` (suporta letras e números).
      - `unmaskCnpj(valor)`: Remove caracteres especiais e retorna string limpa em caixa alta.
      - `isValidCnpj(valor)`: Valida se possui 14 caracteres alfanuméricos válidos.
 
-2. **Isolamento de Código (Evite conflitos de Merge)**:
+2. **CPF Padronizado sem Pontuação e Tipo String**:
+   - Todo campo de CPF no banco, backend e frontend é do tipo `String / VARCHAR(14)`.
+   - Tráfego na API e persistência no banco sempre **sem pontuação** (11 dígitos numéricos limpos).
+   - Backend: Utilize `CpfUtils.unmask(cpf)` para higienização, `CpfUtils.mask(cpf)` para formatação e `CpfUtils.isValid(cpf)` para validação de dígitos verificadores.
+   - Frontend: Utilize `unmaskCpf(cpf)` de `formatters.ts` antes de enviar requisições HTTP e `maskCpf(cpf)` exclusivamente para máscara de digitação e exibição visual.
+
+3. **Isolamento de Código (Evite conflitos de Merge)**:
    - Cada trilha deve trabalhar **exclusivamente** dentro da pasta do seu respectivo módulo em `src/modules/`.
    - Não altere as pastas de outros módulos nem os tipos globais sem alinhamento prévio.
 
-3. **Tipos e Contratos**:
+4. **Tipos e Contratos**:
    - Utilize os tipos compartilhados definidos em `src/shared/types/` (`auth.types.ts`, `receivables.types.ts`, `banking.types.ts`).
 
 ---

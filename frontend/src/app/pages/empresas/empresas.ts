@@ -6,7 +6,8 @@ import { AuthService } from '../../services/auth.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
 import { UsuarioService, Usuario, NovoUsuarioEmpresaDTO } from '../../services/usuario.service';
 import { Empresa } from '../../models/models';
-import { maskCnpj } from '../../shared/utils/cnpj';
+import { maskCnpj, unmaskCnpj } from '../../shared/utils/cnpj';
+import { maskCpf, unmaskCpf } from '../../shared/utils/formatters';
 
 @Component({
   selector: 'app-empresas',
@@ -70,6 +71,7 @@ export class EmpresasComponent implements OnInit {
     if (!this.novaEmpresaForm.razaoSocial || !this.novaEmpresaForm.cnpj) return;
     
     const empresaParaSalvar = { ...this.novaEmpresaForm };
+    empresaParaSalvar.cnpj = unmaskCnpj(empresaParaSalvar.cnpj);
     if (empresaParaSalvar.dataInicioAtividade && empresaParaSalvar.dataInicioAtividade.length === 7) {
       empresaParaSalvar.dataInicioAtividade = empresaParaSalvar.dataInicioAtividade + '-01';
     }
@@ -131,18 +133,13 @@ export class EmpresasComponent implements OnInit {
   }
 
   aplicarMascaraCPF(event: any): void {
-    let valor = event.target.value.replace(/\D/g, '');
-    if (valor.length > 11) valor = valor.substring(0, 11);
-    valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
-    valor = valor.replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3');
-    valor = valor.replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})$/, '$1.$2.$3-$4');
-    this.novoUsuarioForm.cpf = valor;
+    this.novoUsuarioForm.cpf = maskCpf(event.target.value);
   }
 
   vincularNovoUsuario(): void {
     if (!this.novoUsuarioForm.cpf || !this.novoUsuarioForm.senha) return;
     
-    const cpfLimpo = this.novoUsuarioForm.cpf.replace(/\D/g, '');
+    const cpfLimpo = unmaskCpf(this.novoUsuarioForm.cpf);
     const dtoParaSalvar = { ...this.novoUsuarioForm, cpf: cpfLimpo };
 
     this.usuarioService.vincularEmpresa(dtoParaSalvar).subscribe({

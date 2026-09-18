@@ -22,7 +22,7 @@ export const SEED_USUARIO_CONTADOR = {
   id: 'usr-contador-uuid-0001',
   nome: 'Contador Chefe',
   email: 'contador@teste.com',
-  cpf: '111.222.333-44',
+  cpf: '11122233344',
   senhaHash: '123456',
   tipoPerfil: 'CONTABILISTA' as TipoPerfil,
   organizacaoContabilId: 'org-modelo-uuid-0001',
@@ -50,7 +50,7 @@ export const SEED_USUARIO_EMPRESARIO = {
   id: 'usr-empresario-uuid-0002',
   nome: 'Empresário Silva',
   email: 'empresario@teste.com',
-  cpf: '222.333.444-55',
+  cpf: '22233344455',
   senhaHash: '123456',
   tipoPerfil: 'EMPRESARIO' as TipoPerfil,
   status: 'ATIVO' as StatusUsuario
@@ -79,7 +79,7 @@ export const SEED_USUARIO_COLABORADOR_PRECADASTRO = {
   id: 'usr-colaborador-uuid-0003',
   nome: 'Colaborador Convidado',
   email: 'operador@teste.com',
-  cpf: '999.888.777-66',
+  cpf: '99988877766',
   senhaHash: undefined,
   tipoPerfil: 'USUARIO' as TipoPerfil,
   status: 'PENDENTE_CADASTRO' as StatusUsuario

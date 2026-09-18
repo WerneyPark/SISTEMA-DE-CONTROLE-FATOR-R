@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { unmaskCpf, maskCpf } from '../../shared/utils/formatters';
 
 @Component({
   selector: 'app-login',
@@ -20,17 +21,7 @@ export class LoginComponent {
   constructor(private authService: AuthService, private router: Router) {}
 
   aplicarMascaraCPF(event: any) {
-    let v = event.target.value.replace(/\D/g, '');
-    if (v.length > 11) v = v.substring(0, 11);
-    
-    if (v.length > 9) {
-      v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-    } else if (v.length > 6) {
-      v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
-    } else if (v.length > 3) {
-      v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
-    }
-    
+    const v = maskCpf(event.target.value);
     this.cpf = v;
     event.target.value = v;
   }
@@ -44,7 +35,7 @@ export class LoginComponent {
     this.carregando = true;
     this.erro = '';
 
-    const cpfLimpo = this.cpf.replace(/\D/g, '');
+    const cpfLimpo = unmaskCpf(this.cpf);
 
     this.authService.login(cpfLimpo, this.senha).subscribe({
       next: (user) => {
