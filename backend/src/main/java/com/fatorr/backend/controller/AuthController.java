@@ -31,6 +31,7 @@ public class AuthController {
             if (usuario.getSenha().equals(loginDto.getSenha())) {
                 AuthResponseDTO response = AuthResponseDTO.builder()
                         .id(usuario.getId())
+                        .uuidId(usuario.getUuidId())
                         .cpf(usuario.getCpf())
                         .tipo(usuario.getTipo())
                         .token("dummy-token-" + usuario.getId())
