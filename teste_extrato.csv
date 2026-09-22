@@ -1,0 +1,3 @@
+data,descricao,valor,tipo,fitid
+2026-09-01,Pagamento Cliente ABC,1500.00,CREDITO,TEST001
+2026-09-02,Tarifa bancária,35.90,DEBITO,TEST002

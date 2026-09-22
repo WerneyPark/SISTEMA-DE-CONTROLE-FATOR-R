@@ -8,6 +8,7 @@ import lombok.Data;
 @Builder
 public class AuthResponseDTO {
     private Long id;
+    private String uuidId;
     private String cpf;
     private TipoUsuario tipo;
     private String token; // Futuro, para quando colocarmos JWT. Por enquanto, a interface usa o tipo de usuário.

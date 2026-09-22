@@ -1,5 +1,6 @@
 export interface Empresa {
   id?: number;
+  uuidId?: string;
   razaoSocial: string;
   cnpj: string;
   dataInicioAtividade: string;
@@ -33,6 +34,7 @@ export interface ParametroTributario {
 
 export interface AuthResponse {
   id: number;
+  uuidId?: string;
   cpf: string;
   tipo: 'ADMINISTRADOR_CONTABIL' | 'USUARIO_EMPRESA';
   token: string;

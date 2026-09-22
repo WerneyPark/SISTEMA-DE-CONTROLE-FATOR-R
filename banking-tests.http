@@ -1,0 +1,53 @@
+@baseUrl = http://localhost:8080
+@empresaId = emp-alpha-uuid-0001
+
+### 1. Importar CSV
+POST {{baseUrl}}/api/banking/importar/csv?empresaId={{empresaId}}
+Content-Type: multipart/form-data; boundary=----boundary
+
+------boundary
+Content-Disposition: form-data; name="file"; filename="teste_extrato.csv"
+Content-Type: text/csv
+
+< ./teste_extrato.csv
+------boundary--
+
+### 2. Listar lançamentos pendentes
+GET {{baseUrl}}/api/banking/extrato/{{empresaId}}/pendentes
+
+### 3. Listar contas a receber pendentes
+GET {{baseUrl}}/api/banking/contas-receber/{{empresaId}}/pendentes
+
+### 4. Conciliar (troque os IDs pelos que vierem das requisições 2 e 3 acima)
+POST {{baseUrl}}/api/banking/conciliar
+Content-Type: application/json
+
+{
+  "extratoLancamentoId": "8459e21b-d3eb-4c19-9900-566405ca4526",
+  "contaReceberId": "18fb70b2-759e-48c7-bf31-6ac571489060",
+  "usuarioId": "algum-uuid-de-usuario",
+  "observacao": "teste manual via REST Client"
+}
+
+### 5. Importar OFX
+POST {{baseUrl}}/api/banking/importar/ofx?empresaId={{empresaId}}
+Content-Type: multipart/form-data; boundary=----boundary2
+
+------boundary2
+Content-Disposition: form-data; name="file"; filename="teste_extrato.ofx"
+Content-Type: application/x-ofx
+
+< ./teste_extrato.ofx
+------boundary2--
+
+### 6. Verificar campos da Empresa
+GET {{baseUrl}}/api/empresas
+
+### 7. Testar login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "cpf": "22233344455",
+  "senha": "123456"
+}

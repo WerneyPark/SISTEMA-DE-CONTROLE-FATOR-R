@@ -8,6 +8,7 @@ import { LoginComponent } from './pages/login/login';
 import { ParametrosPadraoComponent } from './pages/parametros-padrao/parametros-padrao';
 import { UsuariosAdminComponent } from './pages/usuarios-admin/usuarios-admin';
 import { AuthGuard } from './services/auth.guard';
+import { BankingComponent } from './pages/banking/banking';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -17,6 +18,7 @@ export const routes: Routes = [
     component: MainLayoutComponent,
     canActivate: [AuthGuard],
     children: [
+      { path: 'banking', component: BankingComponent },
       { path: 'home', component: HomeComponent },
       { path: 'simulador', component: SimuladorComponent },
       { path: 'empresas', component: EmpresasComponent },

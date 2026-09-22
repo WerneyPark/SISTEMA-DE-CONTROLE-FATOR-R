@@ -1,0 +1,86 @@
+<div class="banking-container">
+  <div class="page-header">
+    <h2>Conciliação Bancária</h2>
+  </div>
+
+  <div class="import-bar">
+    <label class="import-btn">
+      Importar CSV
+      <input type="file" accept=".csv" (change)="onArquivoSelecionado($event, 'csv')" [disabled]="importando" hidden />
+    </label>
+    <label class="import-btn">
+      Importar OFX
+      <input type="file" accept=".ofx" (change)="onArquivoSelecionado($event, 'ofx')" [disabled]="importando" hidden />
+    </label>
+    <span *ngIf="importando" class="importando-msg">Importando...</span>
+  </div>
+
+  <div *ngIf="mensagemErro" class="alerta alerta-erro">{{ mensagemErro }}</div>
+  <div *ngIf="mensagemSucesso" class="alerta alerta-sucesso">{{ mensagemSucesso }}</div>
+
+  <div *ngIf="loading" class="loading-state">
+    <p>Carregando dados...</p>
+  </div>
+
+  <div *ngIf="!loading" class="split-view">
+    <div class="split-column">
+      <h3>Lançamentos Bancários ({{ lancamentos.length }})</h3>
+      <div *ngIf="lancamentos.length === 0" class="empty-state">
+        <p>Nenhum lançamento pendente.</p>
+      </div>
+      <div
+        *ngFor="let lancamento of lancamentos"
+        class="item-card"
+        [class.selecionado]="lancamentoSelecionado?.id === lancamento.id"
+        (click)="selecionarLancamento(lancamento)"
+      >
+        <div class="item-linha">
+          <strong>{{ lancamento.descricao }}</strong>
+          <span [class.valor-credito]="lancamento.tipo === 'CREDITO'" [class.valor-debito]="lancamento.tipo === 'DEBITO'">
+            {{ lancamento.tipo === 'DEBITO' ? '-' : '' }}{{ formatarValor(lancamento.valor) }}
+          </span>
+        </div>
+        <div class="item-detalhe">
+          {{ lancamento.dataLancamento }} · {{ lancamento.tipo }}
+        </div>
+      </div>
+    </div>
+
+    <div class="split-column">
+      <h3>Contas a Receber ({{ contas.length }})</h3>
+      <div *ngIf="contas.length === 0" class="empty-state">
+        <p>Nenhuma conta pendente.</p>
+      </div>
+      <div
+        *ngFor="let conta of contas"
+        class="item-card"
+        [class.selecionado]="contaSelecionada?.id === conta.id"
+        (click)="selecionarConta(conta)"
+      >
+        <div class="item-linha">
+          <strong>{{ conta.numeroDocumento || 'Sem número' }}</strong>
+          <span>{{ formatarValor(conta.valorTotal) }}</span>
+        </div>
+        <div class="item-detalhe">
+          Vencimento: {{ conta.dataVencimento }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading" class="conciliacao-bar">
+    <input
+      type="text"
+      placeholder="Observação (opcional)"
+      [(ngModel)]="observacao"
+      class="observacao-input"
+    />
+    <button
+      class="btn-conciliar"
+      [disabled]="!podeConciliar"
+      (click)="confirmarConciliacao()"
+    >
+      {{ conciliando ? 'Conciliando...' : 'Conciliar Selecionados' }}
+    </button>
+  </div>
+</div>
