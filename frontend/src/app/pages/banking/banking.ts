@@ -1,6 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { BankingService } from '../../services/banking.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
 import { AuthService } from '../../services/auth.service';
@@ -14,7 +16,7 @@ import { ContaReceberDTO } from '../../shared/types/receivables.types';
   templateUrl: './banking.html',
   styleUrls: ['./banking.css']
 })
-export class BankingComponent implements OnInit {
+export class BankingComponent implements OnInit, OnDestroy {
   lancamentos: ExtratoLancamentoDTO[] = [];
   contas: ContaReceberDTO[] = [];
   loading = true;
@@ -29,6 +31,7 @@ export class BankingComponent implements OnInit {
 
   private empresaId: string | null = null;
   private usuarioId: string | null = null;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private bankingService: BankingService,
@@ -37,19 +40,29 @@ export class BankingComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    const empresa = this.empresaContextService.getEmpresaSelecionada();
     const usuario = this.authService.getCurrentUser();
-
-    this.empresaId = empresa?.uuidId ?? null;
     this.usuarioId = usuario?.uuidId ?? null;
 
-    if (!this.empresaId) {
-      this.mensagemErro = 'Selecione uma empresa para continuar.';
-      this.loading = false;
-      return;
-    }
+    this.empresaContextService.empresaSelecionada$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(empresa => {
+        this.empresaId = empresa?.uuidId || (empresa?.id ? String(empresa.id) : null);
 
-    this.carregarDados();
+        if (!this.empresaId) {
+          this.mensagemErro = 'Selecione uma empresa para continuar.';
+          this.loading = false;
+          this.lancamentos = [];
+          this.contas = [];
+        } else {
+          this.mensagemErro = '';
+          this.carregarDados();
+        }
+      });
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   carregarDados() {
