@@ -11,8 +11,12 @@
       <nav class="main-nav">
         <a routerLink="/home" routerLinkActive="active">Início</a>
         <a routerLink="/simulador" routerLinkActive="active">Simulador</a>
+        <a routerLink="/contas-a-receber" routerLinkActive="active">Contas a Receber</a>
+        <a routerLink="/banking" routerLinkActive="active">Conciliação</a>
+        <a routerLink="/payroll" routerLinkActive="active">Folha & eSocial</a>
+        <a routerLink="/reports" routerLinkActive="active">Dossiês & Laudos</a>
         <a routerLink="/empresas" routerLinkActive="active">Empresas</a>
-        <a routerLink="/parametros" routerLinkActive="active">Parâmetros da Empresa</a>
+        <a routerLink="/parametros" routerLinkActive="active">Parâmetros</a>
         <a *ngIf="isAdmin" routerLink="/parametros-padrao" routerLinkActive="active">Parâmetros Padrão</a>
         <a *ngIf="isAdmin" routerLink="/usuarios-admin" routerLinkActive="active">Usuários (Admin)</a>
       </nav>
@@ -27,7 +31,7 @@
         </select>
       </div>
       <div class="user-info">
-        <span class="user-badge">{{ usuarioAtual.substring(0,2).toUpperCase() }}</span>
+        <span class="user-badge" [title]="usuarioNome">{{ usuarioAtual.substring(0,2).toUpperCase() || 'US' }}</span>
         <button class="btn-logout" (click)="logout()" title="Sair">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
         </button>

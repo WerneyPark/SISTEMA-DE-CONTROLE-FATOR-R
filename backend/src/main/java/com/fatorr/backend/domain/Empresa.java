@@ -5,8 +5,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fatorr.backend.util.CnpjUtils;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "empresas")
@@ -53,4 +55,14 @@ public class Empresa {
     @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private java.util.List<ParametroTributario> parametros = new java.util.ArrayList<>();
+
+    @PrePersist
+    public void prePersist() {
+        if (this.uuidId == null || this.uuidId.trim().isEmpty()) {
+            this.uuidId = UUID.randomUUID().toString();
+        }
+        if (this.cnpj != null) {
+            this.cnpj = CnpjUtils.unmask(this.cnpj);
+        }
+    }
 }

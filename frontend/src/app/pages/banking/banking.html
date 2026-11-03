@@ -1,86 +1,238 @@
 <div class="banking-container">
   <div class="page-header">
-    <h2>Conciliação Bancária</h2>
-  </div>
-
-  <div class="import-bar">
-    <label class="import-btn">
-      Importar CSV
-      <input type="file" accept=".csv" (change)="onArquivoSelecionado($event, 'csv')" [disabled]="importando" hidden />
-    </label>
-    <label class="import-btn">
-      Importar OFX
-      <input type="file" accept=".ofx" (change)="onArquivoSelecionado($event, 'ofx')" [disabled]="importando" hidden />
-    </label>
-    <span *ngIf="importando" class="importando-msg">Importando...</span>
-  </div>
-
-  <div *ngIf="mensagemErro" class="alerta alerta-erro">{{ mensagemErro }}</div>
-  <div *ngIf="mensagemSucesso" class="alerta alerta-sucesso">{{ mensagemSucesso }}</div>
-
-  <div *ngIf="loading" class="loading-state">
-    <p>Carregando dados...</p>
-  </div>
-
-  <div *ngIf="!loading" class="split-view">
-    <div class="split-column">
-      <h3>Lançamentos Bancários ({{ lancamentos.length }})</h3>
-      <div *ngIf="lancamentos.length === 0" class="empty-state">
-        <p>Nenhum lançamento pendente.</p>
-      </div>
-      <div
-        *ngFor="let lancamento of lancamentos"
-        class="item-card"
-        [class.selecionado]="lancamentoSelecionado?.id === lancamento.id"
-        (click)="selecionarLancamento(lancamento)"
-      >
-        <div class="item-linha">
-          <strong>{{ lancamento.descricao }}</strong>
-          <span [class.valor-credito]="lancamento.tipo === 'CREDITO'" [class.valor-debito]="lancamento.tipo === 'DEBITO'">
-            {{ lancamento.tipo === 'DEBITO' ? '-' : '' }}{{ formatarValor(lancamento.valor) }}
-          </span>
-        </div>
-        <div class="item-detalhe">
-          {{ lancamento.dataLancamento }} · {{ lancamento.tipo }}
-        </div>
-      </div>
+    <div class="header-titles">
+      <h2>Conciliação Bancária</h2>
+      <p class="subtitle">Importe extratos OFX/CSV e realize a conciliação manual com contas a receber</p>
     </div>
 
-    <div class="split-column">
-      <h3>Contas a Receber ({{ contas.length }})</h3>
-      <div *ngIf="contas.length === 0" class="empty-state">
-        <p>Nenhuma conta pendente.</p>
-      </div>
-      <div
-        *ngFor="let conta of contas"
-        class="item-card"
-        [class.selecionado]="contaSelecionada?.id === conta.id"
-        (click)="selecionarConta(conta)"
-      >
-        <div class="item-linha">
-          <strong>{{ conta.numeroDocumento || 'Sem número' }}</strong>
-          <span>{{ formatarValor(conta.valorTotal) }}</span>
-        </div>
-        <div class="item-detalhe">
-          Vencimento: {{ conta.dataVencimento }}
-        </div>
-      </div>
+    <div class="import-bar">
+      <label class="import-btn">
+        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+        </svg>
+        Importar CSV
+        <input type="file" accept=".csv" (change)="onArquivoSelecionado($event, 'csv')" [disabled]="importando" hidden />
+      </label>
+
+      <label class="import-btn">
+        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+        </svg>
+        Importar OFX
+        <input type="file" accept=".ofx" (change)="onArquivoSelecionado($event, 'ofx')" [disabled]="importando" hidden />
+      </label>
+
+      <span *ngIf="importando" class="importando-msg">Processando arquivo...</span>
     </div>
   </div>
 
-  <div *ngIf="!loading" class="conciliacao-bar">
-    <input
-      type="text"
-      placeholder="Observação (opcional)"
-      [(ngModel)]="observacao"
-      class="observacao-input"
-    />
+  <!-- Navegação por Abas -->
+  <div class="tabs-nav">
     <button
-      class="btn-conciliar"
-      [disabled]="!podeConciliar"
-      (click)="confirmarConciliacao()"
+      class="tab-btn"
+      [class.active]="abaAtiva === 'pendentes'"
+      (click)="setAba('pendentes')"
     >
-      {{ conciliando ? 'Conciliando...' : 'Conciliar Selecionados' }}
+      <span>Conciliação Pendente</span>
+      <span class="tab-badge">{{ lancamentos.length + contas.length }}</span>
     </button>
+    <button
+      class="tab-btn"
+      [class.active]="abaAtiva === 'historico'"
+      (click)="setAba('historico')"
+    >
+      <span>Histórico de Conciliações</span>
+      <span class="tab-badge badge-neutral">{{ historico.length }}</span>
+    </button>
+  </div>
+
+  <!-- Mensagens de Alerta -->
+  <div *ngIf="mensagemErro" class="alerta alerta-erro">
+    <span>{{ mensagemErro }}</span>
+  </div>
+  <div *ngIf="mensagemSucesso" class="alerta alerta-sucesso">
+    <span>{{ mensagemSucesso }}</span>
+  </div>
+
+  <!-- ABA 1: CONCILIAÇÃO PENDENTE (SPLIT-VIEW) -->
+  <div *ngIf="abaAtiva === 'pendentes'">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Carregando lançamentos bancários e contas a receber...</p>
+    </div>
+
+    <div *ngIf="!loading" class="split-view">
+      <!-- Coluna Esquerda: Extrato Bancário -->
+      <div class="split-column">
+        <div class="column-header">
+          <h3>Lançamentos do Extrato</h3>
+          <span class="count-tag">{{ lancamentos.length }} pendentes</span>
+        </div>
+
+        <div *ngIf="lancamentos.length === 0" class="empty-state">
+          <p>Nenhum lançamento pendente no extrato bancário.</p>
+          <small>Importe um arquivo OFX ou CSV para iniciar a conciliação.</small>
+        </div>
+
+        <div
+          *ngFor="let lancamento of lancamentos"
+          class="item-card"
+          [class.selecionado]="lancamentoSelecionado?.id === lancamento.id"
+          [class.match-destaque]="isMatchComSelecionado(lancamento)"
+          (click)="selecionarLancamento(lancamento)"
+        >
+          <div class="item-linha">
+            <strong class="item-titulo">{{ lancamento.descricao }}</strong>
+            <span [class.valor-credito]="lancamento.tipo === 'CREDITO'" [class.valor-debito]="lancamento.tipo === 'DEBITO'">
+              {{ lancamento.tipo === 'DEBITO' ? '-' : '+' }}{{ formatarValor(lancamento.valor) }}
+            </span>
+          </div>
+
+          <div class="item-detalhe">
+            <span>📅 {{ formatarData(lancamento.dataLancamento) }}</span>
+            <span>·</span>
+            <span class="tipo-tag" [class.tipo-credito]="lancamento.tipo === 'CREDITO'">{{ lancamento.tipo }}</span>
+            <span *ngIf="lancamento.banco">· Banco: {{ lancamento.banco }}</span>
+          </div>
+
+          <!-- Badges Visuais de Sugestão -->
+          <div class="item-badges" *ngIf="isMatchComSelecionado(lancamento) || temSugestaoLancamento(lancamento)">
+            <span *ngIf="isMatchComSelecionado(lancamento)" class="badge-sugestao badge-match">
+              ⭐ Sugestão de Match Selecionado
+            </span>
+            <span *ngIf="!isMatchComSelecionado(lancamento) && temSugestaoLancamento(lancamento)" class="badge-sugestao">
+              💡 Sugestão: Valor correspondente em aberto
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coluna Direita: Contas a Receber -->
+      <div class="split-column">
+        <div class="column-header">
+          <h3>Contas a Receber</h3>
+          <span class="count-tag">{{ contas.length }} pendentes</span>
+        </div>
+
+        <div *ngIf="contas.length === 0" class="empty-state">
+          <p>Nenhuma conta a receber pendente para conciliação.</p>
+        </div>
+
+        <div
+          *ngFor="let conta of contas"
+          class="item-card"
+          [class.selecionado]="contaSelecionada?.id === conta.id"
+          [class.match-destaque]="isContaMatchComSelecionado(conta)"
+          (click)="selecionarConta(conta)"
+        >
+          <div class="item-linha">
+            <strong class="item-titulo">{{ conta.numeroDocumento || 'Sem número' }}</strong>
+            <span class="valor-conta">{{ formatarValor(conta.valorTotal) }}</span>
+          </div>
+
+          <div class="item-detalhe">
+            <span>Vencimento: {{ formatarData(conta.dataVencimento) }}</span>
+            <span *ngIf="conta.origem">· Origem: {{ conta.origem }}</span>
+          </div>
+
+          <!-- Badges Visuais de Sugestão -->
+          <div class="item-badges" *ngIf="isContaMatchComSelecionado(conta) || temSugestaoConta(conta)">
+            <span *ngIf="isContaMatchComSelecionado(conta)" class="badge-sugestao badge-match">
+              ⭐ Sugestão de Match Selecionado
+            </span>
+            <span *ngIf="!isContaMatchComSelecionado(conta) && temSugestaoConta(conta)" class="badge-sugestao">
+              💡 Sugestão: Valor correspondente no extrato
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barra Inferior de Ação de Conciliação -->
+    <div *ngIf="!loading" class="conciliacao-bar">
+      <div class="resumo-selecao">
+        <span *ngIf="!lancamentoSelecionado && !contaSelecionada" class="resumo-vazio">
+          Selecione 1 lançamento à esquerda e 1 conta à direita para conciliar.
+        </span>
+        <span *ngIf="lancamentoSelecionado || contaSelecionada" class="resumo-ativo">
+          Extrato: <strong>{{ lancamentoSelecionado ? formatarValor(lancamentoSelecionado.valor) : 'Nenhum' }}</strong>
+          &nbsp;⇆&nbsp;
+          Título: <strong>{{ contaSelecionada ? formatarValor(contaSelecionada.valorTotal) : 'Nenhum' }}</strong>
+        </span>
+      </div>
+
+      <input
+        type="text"
+        placeholder="Observação da conciliação (opcional)"
+        [(ngModel)]="observacao"
+        class="observacao-input"
+      />
+
+      <button
+        class="btn-conciliar"
+        [disabled]="!podeConciliar"
+        (click)="confirmarConciliacao()"
+      >
+        {{ conciliando ? 'Conciliando...' : 'Conciliar Selecionados' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ABA 2: HISTÓRICO DE CONCILIAÇÕES -->
+  <div *ngIf="abaAtiva === 'historico'" class="historico-container">
+    <div class="historico-header">
+      <h3>Histórico de Conciliações Realizadas</h3>
+      <button class="btn-atualizar" (click)="carregarHistorico()" [disabled]="loadingHistorico">
+        Atualizar Histórico
+      </button>
+    </div>
+
+    <div *ngIf="loadingHistorico" class="loading-state">
+      <div class="spinner"></div>
+      <p>Carregando histórico de conciliações...</p>
+    </div>
+
+    <div *ngIf="!loadingHistorico && historico.length === 0" class="empty-state">
+      <p>Nenhuma conciliação realizada para esta empresa até o momento.</p>
+    </div>
+
+    <div *ngIf="!loadingHistorico && historico.length > 0" class="historico-lista">
+      <div *ngFor="let conc of historico" class="historico-card">
+        <div class="historico-main">
+          <div class="historico-col">
+            <span class="sub-label">Data da Conciliação</span>
+            <strong>{{ formatarData(conc.dataConciliacao) }}</strong>
+            <span *ngIf="conc.observacao" class="historico-obs">Obs: {{ conc.observacao }}</span>
+          </div>
+
+          <div class="historico-col">
+            <span class="sub-label">Lançamento Extrato</span>
+            <strong>{{ conc.extratoLancamento?.descricao || 'Extrato #' + conc.extratoLancamentoId }}</strong>
+            <span class="valor-credito">
+              {{ formatarValor(conc.extratoLancamento?.valor) }}
+            </span>
+          </div>
+
+          <div class="historico-col">
+            <span class="sub-label">Título Conciliado</span>
+            <strong>{{ conc.contaReceber?.numeroDocumento || 'Título #' + conc.contaReceberId }}</strong>
+            <span class="valor-conta">
+              {{ formatarValor(conc.contaReceber?.valorTotal) }}
+            </span>
+          </div>
+        </div>
+
+        <div class="historico-actions">
+          <button
+            class="btn-desconciliar"
+            [disabled]="desconciliandoId === conc.id"
+            (click)="desconciliar(conc)"
+            title="Desfazer conciliação e restaurar lançamentos para PENDENTE"
+          >
+            {{ desconciliandoId === conc.id ? 'Desfazendo...' : 'Desconciliar' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

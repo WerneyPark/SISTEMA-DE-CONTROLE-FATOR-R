@@ -5,9 +5,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fatorr.backend.util.CpfUtils;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "usuarios")
@@ -66,4 +68,14 @@ public class Usuario {
     @lombok.ToString.Exclude
     @JsonIgnore
     private Set<Empresa> empresas = new HashSet<>();
+
+    @PrePersist
+    public void prePersist() {
+        if (this.uuidId == null || this.uuidId.trim().isEmpty()) {
+            this.uuidId = UUID.randomUUID().toString();
+        }
+        if (this.cpf != null) {
+            this.cpf = CpfUtils.unmask(this.cpf);
+        }
+    }
 }

@@ -6,22 +6,38 @@
       <p>Gestão Tributária Inteligente</p>
     </div>
 
-    <form (ngSubmit)="fazerLogin()" class="login-form">
-      <div *ngIf="erro" class="alert-error">
-        {{ erro }}
-      </div>
+    <!-- Navegação de Abas -->
+    <div class="tabs-nav">
+      <button type="button" class="tab-btn" [class.active]="abaAtiva === 'login'" (click)="trocarAba('login')">
+        Entrar
+      </button>
+      <button type="button" class="tab-btn" [class.active]="abaAtiva === 'cadastro'" (click)="trocarAba('cadastro')">
+        Cadastrar
+      </button>
+      <button type="button" class="tab-btn" [class.active]="abaAtiva === 'recuperar'" (click)="trocarAba('recuperar')">
+        Recuperar Senha
+      </button>
+    </div>
 
+    <!-- Alertas -->
+    <div *ngIf="erro" class="alert-error">
+      {{ erro }}
+    </div>
+    <div *ngIf="sucesso" class="alert-success">
+      {{ sucesso }}
+    </div>
+
+    <!-- ABA 1: ENTRAR -->
+    <form *ngIf="abaAtiva === 'login'" (ngSubmit)="fazerLogin()" class="login-form">
       <div class="form-group">
-        <label for="cpf">CPF</label>
+        <label for="loginInput">CPF ou E-mail</label>
         <input 
           type="text" 
-          id="cpf" 
-          name="cpf" 
-          [(ngModel)]="cpf" 
-          placeholder="000.000.000-00"
-          autocomplete="off"
-          maxlength="14"
-          (input)="aplicarMascaraCPF($event)">
+          id="loginInput" 
+          name="loginInput" 
+          [(ngModel)]="loginInput" 
+          placeholder="000.000.000-00 ou seu@email.com"
+          autocomplete="off">
       </div>
 
       <div class="form-group">
@@ -34,9 +50,227 @@
           placeholder="Sua senha de acesso">
       </div>
 
+      <div class="actions-row">
+        <a class="link-recuperar" (click)="trocarAba('recuperar')">Esqueceu a senha?</a>
+      </div>
+
       <button type="submit" class="btn-primary" [disabled]="carregando">
         {{ carregando ? 'Autenticando...' : 'Entrar' }}
       </button>
     </form>
+
+    <!-- ABA 2: CADASTRAR -->
+    <div *ngIf="abaAtiva === 'cadastro'" class="cadastro-container">
+      <!-- Seletor de Perfil -->
+      <div class="perfil-selector">
+        <button 
+          type="button" 
+          class="sub-tab-btn" 
+          [class.active]="perfilCadastro === 'CONTADOR'"
+          (click)="perfilCadastro = 'CONTADOR'">
+          Contador
+        </button>
+        <button 
+          type="button" 
+          class="sub-tab-btn" 
+          [class.active]="perfilCadastro === 'EMPRESARIO'"
+          (click)="perfilCadastro = 'EMPRESARIO'">
+          Empresário
+        </button>
+        <button 
+          type="button" 
+          class="sub-tab-btn" 
+          [class.active]="perfilCadastro === 'COLABORADOR'"
+          (click)="perfilCadastro = 'COLABORADOR'">
+          Colaborador
+        </button>
+      </div>
+
+      <!-- Formulário: Contador -->
+      <form *ngIf="perfilCadastro === 'CONTADOR'" (ngSubmit)="cadastrarContador()" class="login-form">
+        <div class="form-section-title">Dados do Profissional</div>
+        <div class="form-group">
+          <label>Nome Completo</label>
+          <input type="text" [(ngModel)]="contador.nome" name="cNome" placeholder="Seu nome" required>
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" [(ngModel)]="contador.email" name="cEmail" placeholder="seu@email.com" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>CPF</label>
+            <input type="text" [(ngModel)]="contador.cpf" name="cCpf" placeholder="000.000.000-00" maxlength="14" (input)="aplicarMascaraCPF($event, contador, 'cpf')" required>
+          </div>
+          <div class="form-group flex-1">
+            <label>Senha</label>
+            <input type="password" [(ngModel)]="contador.senha" name="cSenha" placeholder="Mínimo 6 caracteres" required>
+          </div>
+        </div>
+
+        <div class="form-section-title">Organização Contábil</div>
+        <div class="form-group">
+          <label>Nome do Escritório / Empresa</label>
+          <input type="text" [(ngModel)]="contador.nomeOrganizacao" name="cOrg" placeholder="Ex: Modelo Contabilidade Ltda" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>CNPJ (Tradicional ou Alfanumérico)</label>
+            <input type="text" [(ngModel)]="contador.cnpj" name="cCnpj" placeholder="00.000.000/0000-00" maxlength="18" (input)="aplicarMascaraCNPJ($event, contador, 'cnpj')" required>
+          </div>
+          <div class="form-group flex-1">
+            <label>CRC</label>
+            <input type="text" [(ngModel)]="contador.crc" name="cCrc" placeholder="Ex: CRC-SP 123456/O" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="carregando">
+          {{ carregando ? 'Cadastrando...' : 'Criar Conta de Contador' }}
+        </button>
+      </form>
+
+      <!-- Formulário: Empresário -->
+      <form *ngIf="perfilCadastro === 'EMPRESARIO'" (ngSubmit)="cadastrarEmpresario()" class="login-form">
+        <div class="form-section-title">Dados do Empresário</div>
+        <div class="form-group">
+          <label>Nome do Sócio / Responsável</label>
+          <input type="text" [(ngModel)]="empresario.nome" name="eNome" placeholder="Nome completo" required>
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" [(ngModel)]="empresario.email" name="eEmail" placeholder="seu@email.com" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>CPF</label>
+            <input type="text" [(ngModel)]="empresario.cpf" name="eCpf" placeholder="000.000.000-00" maxlength="14" (input)="aplicarMascaraCPF($event, empresario, 'cpf')" required>
+          </div>
+          <div class="form-group flex-1">
+            <label>Senha</label>
+            <input type="password" [(ngModel)]="empresario.senha" name="eSenha" placeholder="Mínimo 6 caracteres" required>
+          </div>
+        </div>
+
+        <div class="form-section-title">Dados da Empresa</div>
+        <div class="form-group">
+          <label>Razão Social</label>
+          <input type="text" [(ngModel)]="empresario.razaoSocial" name="eRazao" placeholder="Ex: Alfa Soluções Tecnológicas Ltda" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Nome Fantasia (Opcional)</label>
+            <input type="text" [(ngModel)]="empresario.nomeFantasia" name="eFantasia" placeholder="Ex: Alfa Tech">
+          </div>
+          <div class="form-group flex-1">
+            <label>CNPJ da Empresa</label>
+            <input type="text" [(ngModel)]="empresario.cnpj" name="eCnpj" placeholder="00.000.000/0000-00" maxlength="18" (input)="aplicarMascaraCNPJ($event, empresario, 'cnpj')" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="carregando">
+          {{ carregando ? 'Cadastrando...' : 'Criar Conta de Empresário' }}
+        </button>
+      </form>
+
+      <!-- Formulário: Colaborador -->
+      <form *ngIf="perfilCadastro === 'COLABORADOR'" (ngSubmit)="cadastrarColaborador()" class="login-form">
+        <div class="form-section-title">Dados do Colaborador</div>
+        <div class="form-group">
+          <label>Nome Completo</label>
+          <input type="text" [(ngModel)]="colaborador.nome" name="colabNome" placeholder="Seu nome" required>
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" [(ngModel)]="colaborador.email" name="colabEmail" placeholder="seu@email.com">
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>CPF</label>
+            <input type="text" [(ngModel)]="colaborador.cpf" name="colabCpf" placeholder="000.000.000-00" maxlength="14" (input)="aplicarMascaraCPF($event, colaborador, 'cpf')" required>
+          </div>
+          <div class="form-group flex-1">
+            <label>Senha</label>
+            <input type="password" [(ngModel)]="colaborador.senha" name="colabSenha" placeholder="Mínimo 6 caracteres" required>
+          </div>
+        </div>
+
+        <div class="form-section-title">Empresa e Função</div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>CNPJ ou Identificador da Empresa</label>
+            <input type="text" [(ngModel)]="colaborador.empresaId" name="colabEmpId" placeholder="CNPJ da empresa contratante" required>
+          </div>
+          <div class="form-group flex-1">
+            <label>Função / Cargo</label>
+            <input type="text" [(ngModel)]="colaborador.funcao" name="colabFuncao" placeholder="Ex: Operador Financeiro">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="carregando">
+          {{ carregando ? 'Cadastrando...' : 'Cadastrar e Solicitar Vínculo' }}
+        </button>
+      </form>
+    </div>
+
+    <!-- ABA 3: RECUPERAR SENHA -->
+    <div *ngIf="abaAtiva === 'recuperar'" class="recuperar-container">
+      <form *ngIf="recuperar.etapa === 'solicitar'" (ngSubmit)="solicitarRecuperacao()" class="login-form">
+        <p class="info-text">
+          Informe seu CPF ou E-mail cadastrado. Um token de segurança será gerado com validade de 1 hora.
+        </p>
+
+        <div class="form-group">
+          <label>CPF ou E-mail</label>
+          <input 
+            type="text" 
+            [(ngModel)]="recuperar.identificador" 
+            name="recIdentificador" 
+            placeholder="000.000.000-00 ou seu@email.com" 
+            required>
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="carregando">
+          {{ carregando ? 'Processando...' : 'Gerar Token de Recuperação' }}
+        </button>
+
+        <div class="actions-row">
+          <a class="link-voltar" (click)="recuperar.etapa = 'redefinir'">Já tenho um token</a>
+        </div>
+      </form>
+
+      <form *ngIf="recuperar.etapa === 'redefinir'" (ngSubmit)="redefinirSenha()" class="login-form">
+        <p class="info-text">
+          Insira o token de segurança e a nova senha desejada.
+        </p>
+
+        <div class="form-group">
+          <label>Token de Recuperação</label>
+          <input 
+            type="text" 
+            [(ngModel)]="recuperar.token" 
+            name="recToken" 
+            placeholder="Cole o token recebido aqui" 
+            required>
+        </div>
+
+        <div class="form-group">
+          <label>Nova Senha</label>
+          <input 
+            type="password" 
+            [(ngModel)]="recuperar.novaSenha" 
+            name="recNovaSenha" 
+            placeholder="Mínimo 6 caracteres" 
+            required>
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="carregando">
+          {{ carregando ? 'Atualizando Senha...' : 'Salvar Nova Senha' }}
+        </button>
+
+        <div class="actions-row">
+          <a class="link-voltar" (click)="recuperar.etapa = 'solicitar'">Voltar para solicitação</a>
+        </div>
+      </form>
+    </div>
   </div>
 </div>

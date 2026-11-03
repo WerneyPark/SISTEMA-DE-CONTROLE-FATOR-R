@@ -1,33 +1,194 @@
-<div class="empresas-container">
+<div class="usuarios-admin-container">
   <div class="page-header">
-    <h2>Gerenciamento de Usuários (Admin)</h2>
+    <div>
+      <h2>Gerenciamento de Usuários e Vínculos Multi-Empresas</h2>
+      <p class="subtitle">Pré-cadastre colaboradores por CPF, aprove solicitações de vínculo e gerencie permissões RBAC.</p>
+    </div>
   </div>
 
-  <div *ngIf="loading" class="loading-state">
-    <p>Carregando usuários...</p>
+  <!-- Alertas Gerais de Ação -->
+  <div *ngIf="mensagemAcaoSucesso" class="alert-success">
+    {{ mensagemAcaoSucesso }}
+  </div>
+  <div *ngIf="mensagemAcaoErro" class="alert-error">
+    {{ mensagemAcaoErro }}
   </div>
 
-  <div *ngIf="!loading && usuarios.length === 0" class="empty-state">
-    <p>Nenhum usuário cadastrado.</p>
-  </div>
-
-  <div *ngIf="!loading && usuarios.length > 0" class="empresas-grid">
-    <div class="empresa-card" *ngFor="let usuario of usuarios">
-      <div class="empresa-icon">
-        {{ usuario.cpf.substring(0,2) }}
+  <!-- SEÇÃO 1: Pré-Cadastro por CPF -->
+  <div class="admin-card mb-4">
+    <div class="card-header">
+      <div class="card-icon invite-icon"></div>
+      <div>
+        <h3>Convidar / Pré-cadastrar Colaborador por CPF</h3>
+        <p>Ao pré-cadastrar o CPF, quando o colaborador se registrar no sistema, o vínculo com a empresa será ativado automaticamente.</p>
       </div>
-      <div class="empresa-info">
-        <h3>CPF: {{ formatarCpf(usuario.cpf) }}</h3>
-        <p><strong>Tipo:</strong> {{ usuario.tipo === 'ADMINISTRADOR_CONTABIL' ? 'Administrador' : 'Usuário Empresa' }}</p>
-        
-        <div class="empresas-vinculadas" style="margin-top: 10px;">
-          <h4 style="color: #cbd5e1; font-size: 14px; margin-bottom: 5px;">Empresas Vinculadas:</h4>
-          <ul *ngIf="usuario.empresas.length > 0" style="padding-left: 20px; margin: 0; color: #94a3b8; font-size: 13px;">
-            <li *ngFor="let emp of usuario.empresas">
+    </div>
+
+    <form (ngSubmit)="enviarConvitePreCadastro()" class="invite-form">
+      <div *ngIf="mensagemConviteSucesso" class="alert-success">
+        {{ mensagemConviteSucesso }}
+      </div>
+      <div *ngIf="mensagemConviteErro" class="alert-error">
+        {{ mensagemConviteErro }}
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="conviteCpf">CPF do Colaborador *</label>
+          <input 
+            type="text" 
+            id="conviteCpf" 
+            name="conviteCpf" 
+            [(ngModel)]="conviteCpf" 
+            placeholder="000.000.000-00" 
+            maxlength="14"
+            (input)="aplicarMascaraCPF($event)" 
+            required>
+        </div>
+
+        <div class="form-group">
+          <label for="conviteFuncao">Função / Cargo</label>
+          <input 
+            type="text" 
+            id="conviteFuncao" 
+            name="conviteFuncao" 
+            [(ngModel)]="conviteFuncao" 
+            placeholder="Ex: Operador Financeiro, Assistente Contábil">
+        </div>
+
+        <div class="form-group">
+          <label for="conviteEmpresaId">Empresa *</label>
+          <select 
+            id="conviteEmpresaId" 
+            name="conviteEmpresaId" 
+            [(ngModel)]="conviteEmpresaId" 
+            required>
+            <option value="" disabled selected>Selecione a empresa...</option>
+            <option *ngFor="let emp of empresas" [value]="emp.uuidId || emp.id">
               {{ emp.razaoSocial }} ({{ formatarCnpj(emp.cnpj) }})
-            </li>
-          </ul>
-          <p *ngIf="usuario.empresas.length === 0" style="color: #64748b; font-size: 13px; margin: 0;">Nenhuma empresa vinculada</p>
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group form-action-bottom">
+          <button type="submit" class="btn-primary" [disabled]="convidando">
+            {{ convidando ? 'Cadastrando...' : 'Pré-cadastrar CPF' }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- SEÇÃO 2: Solicitações de Vínculo Pendentes -->
+  <div class="admin-card mb-4">
+    <div class="card-header">
+      <div class="card-icon pending-icon"></div>
+      <div>
+        <h3>Solicitações de Vínculo Pendentes</h3>
+        <p>Aprove ou rejeite a entrada de colaboradores nas empresas sob gestão contábil.</p>
+      </div>
+    </div>
+
+    <div *ngIf="loadingPendentes" class="loading-state">
+      <p>Carregando solicitações pendentes...</p>
+    </div>
+
+    <div *ngIf="!loadingPendentes && vinculosPendentes.length === 0" class="empty-state">
+      <p>Nenhuma solicitação de vínculo pendente no momento.</p>
+    </div>
+
+    <div *ngIf="!loadingPendentes && vinculosPendentes.length > 0" class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Usuário</th>
+            <th>CPF</th>
+            <th>Função</th>
+            <th>Data Solicitação</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let v of vinculosPendentes">
+            <td>
+              <div class="table-empresa-name">{{ v.empresaNome }}</div>
+              <small class="table-sub">{{ formatarCnpj(v.empresaCnpj) }}</small>
+            </td>
+            <td>
+              <div class="table-user-name">{{ v.usuarioNome }}</div>
+              <small class="table-sub">{{ v.usuarioEmail || 'E-mail não informado' }}</small>
+            </td>
+            <td>{{ formatarCpf(v.usuarioCpf) }}</td>
+            <td>
+              <span class="badge-role">{{ v.funcao || 'Colaborador' }}</span>
+            </td>
+            <td>{{ v.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td class="text-right">
+              <div class="action-buttons">
+                <button type="button" class="btn-approve" (click)="aprovarVinculo(v)">
+                  Aprovar
+                </button>
+                <button type="button" class="btn-reject" (click)="rejeitarVinculo(v)">
+                  Rejeitar
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SEÇÃO 3: Usuários Cadastrados -->
+  <div class="admin-card">
+    <div class="card-header">
+      <div class="card-icon users-icon"></div>
+      <div>
+        <h3>Usuários do Sistema</h3>
+        <p>Listagem de todos os usuários com seus perfis e empresas associadas.</p>
+      </div>
+    </div>
+
+    <div *ngIf="loadingUsuarios" class="loading-state">
+      <p>Carregando usuários...</p>
+    </div>
+
+    <div *ngIf="!loadingUsuarios && usuarios.length === 0" class="empty-state">
+      <p>Nenhum usuário cadastrado.</p>
+    </div>
+
+    <div *ngIf="!loadingUsuarios && usuarios.length > 0" class="empresas-grid">
+      <div class="empresa-card" *ngFor="let usuario of usuarios">
+        <div class="empresa-header-card">
+          <div class="empresa-icon">
+            {{ usuario.cpf ? usuario.cpf.substring(0, 2) : 'US' }}
+          </div>
+          <div class="user-badges">
+            <span class="badge-profile" [ngClass]="{
+              'badge-contabilista': usuario.tipo === 'ADMINISTRADOR_CONTABIL',
+              'badge-empresario': usuario.tipo !== 'ADMINISTRADOR_CONTABIL'
+            }">
+              {{ usuario.tipo === 'ADMINISTRADOR_CONTABIL' ? 'Contabilista' : 'Usuário Empresa' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="empresa-info">
+          <h3>CPF: {{ formatarCpf(usuario.cpf) }}</h3>
+          
+          <div class="empresas-vinculadas">
+            <h4>Empresas Vinculadas ({{ usuario.empresas ? usuario.empresas.length : 0 }}):</h4>
+            <ul *ngIf="usuario.empresas && usuario.empresas.length > 0">
+              <li *ngFor="let emp of usuario.empresas">
+                <span class="emp-bullet"></span>
+                <span>{{ emp.razaoSocial }} <small>({{ formatarCnpj(emp.cnpj) }})</small></span>
+              </li>
+            </ul>
+            <p *ngIf="!usuario.empresas || usuario.empresas.length === 0" class="no-emp">
+              Nenhuma empresa vinculada no momento.
+            </p>
+          </div>
         </div>
       </div>
     </div>

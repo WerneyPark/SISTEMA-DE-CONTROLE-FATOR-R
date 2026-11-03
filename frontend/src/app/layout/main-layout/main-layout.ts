@@ -18,6 +18,7 @@ export class MainLayoutComponent implements OnInit {
   empresaSelecionadaId: number | null = null;
   isAdmin = false;
   usuarioAtual = '';
+  usuarioNome = '';
 
   constructor(
     private empresaContext: EmpresaContextService,
@@ -27,7 +28,9 @@ export class MainLayoutComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.usuarioAtual = this.authService.getCurrentUser()?.cpf || '';
+    const user = this.authService.getCurrentUser();
+    this.usuarioAtual = user?.cpf || '';
+    this.usuarioNome = user?.nome || (user?.cpf ? `CPF: ${user.cpf}` : 'Usuário');
     this.isAdmin = this.authService.isAdmin();
 
     this.carregarEmpresas();

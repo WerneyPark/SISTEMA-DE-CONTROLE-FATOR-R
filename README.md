@@ -31,10 +31,10 @@ $$\text{Fator R} = \frac{\sum \text{Folha de Pagamento (Últimos 12 Meses)}}{\su
 4. **Comparativo com Lucro Presumido:** Apura PIS, COFINS, ISS, IRPJ, CSLL e adicional, apontando a economia anual estimada.
 5. **Projeções de Cenários Futuros:** Projeta o impacto nos meses $M+1$ e $M+2$ para cenários Otimista (+15%), Neutro (0%) e Pessimista (-15%).
 6. **Automação de Receitas & Despesas:**
-   - **Receitas:** Importação de XML de NF-e/NFS-e com auto-cadastro de tomadores e geração de contas a receber.
-   - **Bancos:** Importação de extratos OFX/CSV e conciliação bancária manual em split-view.
-   - **Folha:** Importação de eventos do eSocial (S-1200 / S-1210) e relatórios de ERPs contábeis, com recomendador de pró-labore ideal.
-7. **Dossiê & Parecer Técnico:** Emissão de laudos formais em PDF timbrado com CRC do contador e planilhas analíticas em Excel (`.xlsx`).
+   - **Receitas:** Importação de XML de NF-e/NFS-e com auto-cadastro de tomadores e geração de contas a receber com pré-visualização.
+   - **Bancos:** Importação de extratos OFX/CSV, deduplicação por FITID e conciliação bancária manual em split-view com histórico e desconciliação.
+   - **Folha:** Importação de eventos do eSocial (S-1200 / S-1210) e relatórios de ERPs contábeis, com recomendador e simulador de pró-labore ideal.
+7. **Dossiê & Parecer Técnico:** Emissão de laudos formais em PDF timbrado com CRC do contador (OpenPDF), planilhas analíticas em Excel (`.xlsx` via Apache POI) e certificado de autenticidade por hash SHA-256.
 
 ---
 
@@ -44,7 +44,7 @@ $$\text{Fator R} = \frac{\sum \text{Folha de Pagamento (Últimos 12 Meses)}}{\su
 Conforme a nova regulamentação da Receita Federal do Brasil, todos os campos de CNPJ utilizam o tipo `VARCHAR(20)` para acomodar caracteres alfanuméricos (letras e números):
 - **Formato Válido:** 14 caracteres alfanuméricos `^[A-Z0-9]{14}$` (ex: `12ABC345000101`, `98XYZ765000102`).
 - **Máscara Padrão:** `XX.XXX.XXX/XXXX-XX`.
-- **Utilitários Globais:** Disponíveis em `src/shared/utils/cnpj.ts` (TypeScript) e `com.fatorr.backend.util.CnpjUtils` (Java):
+- **Utilitários Globais:** Disponíveis em `frontend/src/app/shared/utils/cnpj.ts` (TypeScript) e `com.fatorr.backend.util.CnpjUtils` (Java):
   - `maskCnpj(valor)`: Aplica a máscara alfanumérica.
   - `unmaskCnpj(valor)`: Limpa caracteres especiais e retorna string em caixa alta.
   - `isValidCnpj(valor)`: Valida tamanho (14) e formato alfanumérico.
@@ -53,22 +53,21 @@ Conforme a nova regulamentação da Receita Federal do Brasil, todos os campos d
 Para evitar discrepâncias em consultas e autenticação:
 - CPFs são armazenados e trafegados no banco **estritamente com 11 dígitos numéricos** (`VARCHAR(14)`), sem pontos ou traços.
 - Máscaras (`000.000.000-00`) são aplicadas apenas na camada de exibição visual.
+- Utilitários disponíveis em `frontend/src/app/shared/utils/formatters.ts` e `com.fatorr.backend.util.CpfUtils`.
 
 ---
 
-## 👥 Organização da Equipe (5 Trilhas Paralelas)
+## 👥 Funcionalidades e Módulos Implementados
 
-O desenvolvimento das novas funcionalidades está distribuído em **5 trilhas isoladas** para garantir que desenvolvedores atuem em paralelo sem conflitos de merge:
+O sistema conta com as **5 Trilhas de Negócio 100% implementadas e integradas**:
 
-| Trilha | Branch de Trabalho | Domínio / Módulo | Escopo Principal |
+| Módulo / Trilha | Camada Backend | Camada Frontend | Escopo Principal |
 | :---: | :--- | :--- | :--- |
-| **1** | `feature/auth-rbac-empresas` | `src/modules/auth/` | Login JWT, Refresh Token, RBAC (Contador, Empresário, Usuário), pré-cadastro por CPF e aprovação de acessos. |
-| **2** | `feature/contas-a-receber-xml` | `src/modules/receivables/` | CRUD de títulos, baixa manual, parser XML de NF-e/NFS-e e auto-cadastro de tomadores. |
-| **3** | `feature/extrato-conciliacao-manual` | `src/modules/banking/` | Parser OFX/CSV, deduplicação por FITID, tela split-view e conciliação transacional. |
-| **4** | `feature/folha-pagamento-esocial` | `src/modules/payroll/` | Parser eSocial (S-1200/S-1210), importação de folha CSV/Excel e simulador de Pró-Labore ideal. |
-| **5** | `feature/dossie-relatorios-tributarios` | `src/modules/reports/` | Motor de geração de Laudos em PDF com CRC, exportação Excel `.xlsx` e autenticidade por hash SHA-256. |
-
-> 📖 Para instruções completas de desenvolvimento, convenções de commit e regras de arquitetura, consulte o [**Guia da Equipe (`TASKS_GUIDE.md`)**](./TASKS_GUIDE.md).
+| **Trilha 1** | `AuthController`, `AuthService`, `JwtUtils`, `UsuarioController` | `pages/login/`, `pages/usuarios-admin/`, `auth.interceptor.ts` | Login JWT, Refresh Token, BCrypt, RBAC (Contador, Empresário, Colaborador), pré-cadastro por CPF e aprovação de vínculos. |
+| **Trilha 2** | `ContaReceberController`, `ContaReceberService`, `LeitorXmlNfeService` | `pages/contas-a-receber/`, `conta-receber.service.ts` | CRUD paginado de títulos, baixa manual, parser seguro XML de NF-e/NFS-e com pré-visualização e auto-cadastro de tomadores. |
+| **Trilha 3** | `BankingController`, `BankingService` | `pages/banking/`, `banking.service.ts` | Parser OFX/CSV, deduplicação por FITID, split-view com sugestões de match, histórico e desconciliação. |
+| **Trilha 4** | `PayrollController`, `PayrollService` | `pages/payroll/`, `payroll.service.ts` | Folha analítica detalhada com sincronização atômica ao Fator R, parser eSocial (S-1200/S-1210) e simulador de Pró-Labore ideal. |
+| **Trilha 5** | `ReportsController`, `ReportsService` | `pages/reports/`, `reports.service.ts` | Motor de geração de Laudos em PDF com CRC (OpenPDF), exportação Excel `.xlsx` (Apache POI) e autenticidade por hash SHA-256. |
 
 ---
 
@@ -76,22 +75,20 @@ O desenvolvimento das novas funcionalidades está distribuído em **5 trilhas is
 
 ### Backend
 - **Linguagem & Framework:** Java 21 LTS / Spring Boot 4.0.6
-- **Módulos Spring:** Spring WebMVC, Spring Data JPA, Jakarta Bean Validation
-- **Persistência:** Hibernate ORM 7.2 & PostgreSQL JDBC Driver
-- **Migrações de Banco:** Scripts SQL versionados (`V1`, `V2`, `V3`)
+- **Módulos Spring:** Spring WebMVC, Spring Data JPA, Jakarta Bean Validation, Spring Security Crypto
+- **Relatórios & Documentos:** OpenPDF 2.0.3, Apache POI 5.3.0 (OOXML), Commons CSV 1.11.0
+- **Segurança:** Tokens JWT HMAC-SHA256 e Hash BCrypt
+- **Persistência:** Hibernate ORM 7.2 & PostgreSQL JDBC Driver com `TenantResolverService`
 - **Utilitários:** Project Lombok, Maven Wrapper (`mvnw` / `mvnw.cmd`)
 - **Testes:** JUnit 5, Mockito
 
 ### Frontend
 - **Framework:** Angular 21.2 (Standalone Components)
+- **Segurança:** HttpInterceptor funcional com injeção de Bearer Token e AuthGuard
 - **Gerenciamento de Estado:** RxJS 7.8 (BehaviorSubject / Observables)
 - **Linguagem:** TypeScript 5.9
-- **Estilização:** CSS3 puro e responsivo com design tokens modernos
+- **Estilização:** CSS3 puro e responsivo com design tokens modernos e dark theme corporativo
 - **Testes:** Vitest 4.1 & JSDOM
-
-### Shared & Contratos Universais
-- **Contratos de Tipos:** TypeScript Interfaces compartilhadas (`auth`, `receivables`, `banking`, `payroll`, `reports`, `common`)
-- **Utilitários Globais:** Sanitização de CNPJ alfanumérico, CPF, formatação monetária (BRL) e manipuladores de datas
 
 ### Infraestrutura & Banco de Dados
 - **Banco de Dados:** PostgreSQL 16 Alpine
@@ -99,45 +96,31 @@ O desenvolvimento das novas funcionalidades está distribuído em **5 trilhas is
 
 ---
 
-## 📂 Estrutura de Pastas do Projeto
+## 📂 Estrutura de Pastas Consolidada do Projeto
 
 ```plaintext
 SISTEMA DE CONTROLE FATOR R/
 ├── .env.example                     # Template de variáveis de ambiente
 ├── .gitignore                       # Ignora builds, dependências, segredos e temporários
 ├── docker-compose.yml               # Orquestração do PostgreSQL 16
-├── TASKS_GUIDE.md                   # Guia oficial de desenvolvimento e divisão das 5 trilhas
+├── TASKS_GUIDE.md                   # Guia oficial de desenvolvimento e arquitetura
 ├── DOCUMENTATION.md                 # Documentação técnica de engenharia
 ├── documentacao.html                # Documentação técnica interativa autocontida
 ├── README.md                        # Guia principal do repositório
 │
-├── src/                             # Fundações e Módulos Globais
-│   ├── shared/                      # Contratos e utilitários universais
-│   │   ├── types/                   # Contratos TS (auth, receivables, banking, payroll, reports)
-│   │   ├── utils/                   # Utilitários (cnpj alfanumérico, date, formatters)
-│   │   ├── database/                # Schemas SQL e Seeds de teste
-│   │   └── middlewares/             # AuthGuard, TenantMiddleware, ErrorHandler
-│   │
-│   └── modules/                     # Scaffolding das 5 Trilhas de Desenvolvimento
-│       ├── auth/                    # [Trilha 1] Login, RBAC e Multi-Empresas
-│       ├── receivables/             # [Trilha 2] Contas a Receber e Parser XML
-│       ├── banking/                 # [Trilha 3] Extratos OFX/CSV e Conciliação
-│       ├── payroll/                 # [Trilha 4] Folha Detalhada, eSocial e Pró-Labore
-│       └── reports/                 # [Trilha 5] Laudos PDF, Excel e Dossiê Fiscal
-│
 ├── backend/                         # Módulo API REST (Spring Boot 4.0.6)
 │   ├── mvnw / mvnw.cmd              # Wrapper do Maven
-│   ├── pom.xml                      # Dependências Maven
+│   ├── pom.xml                      # Dependências Maven (Spring, OpenPDF, Apache POI, etc.)
 │   └── src/
 │       ├── main/java/com/fatorr/backend/
 │       │   ├── BackendApplication.java    # Bootstrap da aplicação Spring Boot
 │       │   ├── config/DataSeeder.java     # Carga de parâmetros e seeds iniciais
-│       │   ├── controller/                # Endpoints REST (Auth, Empresa, Faturamento, etc.)
+│       │   ├── controller/                # Endpoints REST (Auth, ContasReceber, Banking, Payroll, Reports, etc.)
 │       │   ├── domain/                    # Entidades JPA (13 tabelas relacionais)
 │       │   ├── dto/                       # Data Transfer Objects
 │       │   ├── repository/                # Interfaces Spring Data JPA
-│       │   ├── service/                   # Cálculos fiscais e regras de negócio
-│       │   └── util/                      # CnpjUtils e validadores Java
+│       │   ├── service/                   # Cálculos fiscais, regras de negócio e parsers
+│       │   └── util/                      # CnpjUtils, CpfUtils e JwtUtils
 │       └── resources/
 │           ├── application.properties     # Configurações de banco e Hibernate
 │           └── db/migration/              # Migrações SQL versionadas (V1, V2, V3)
@@ -148,12 +131,13 @@ SISTEMA DE CONTROLE FATOR R/
     └── src/
         ├── environments/            # Configurações de endpoints (dev/prod)
         └── app/
+            ├── app.config.ts        # Configuração global de provedores e interceptor JWT
             ├── app.routes.ts        # Rotas da aplicação e Guards de segurança
             ├── layout/              # Layout principal (Header, menu e contexto de empresa)
             ├── models/              # Interfaces TypeScript do frontend
-            ├── pages/               # Telas (Home, Login, Simulador, Empresas, Parâmetros)
+            ├── pages/               # Telas (Home, Simulador, Contas a Receber, Banking, Payroll, Reports, etc.)
             ├── services/            # Serviços HTTP e RxJS State Context
-            └── shared/              # Utilitários e types sincronizados
+            └── shared/              # Utilitários e types universais
 ```
 
 ---
@@ -188,18 +172,7 @@ O banco de dados relacional (PostgreSQL) é composto pelas seguintes tabelas est
 
 ---
 
-### Passo 1: Clonar o Repositório e Configurar Variáveis
-```bash
-git clone https://github.com/WerneyPark/SISTEMA-DE-CONTROLE-FATOR-R.git
-cd SISTEMA-DE-CONTROLE-FATOR-R
-
-# Copiar arquivo de variáveis de ambiente
-cp .env.example .env
-```
-
----
-
-### Passo 2: Subir o Banco de Dados (PostgreSQL)
+### Passo 1: Subir o Banco de Dados (PostgreSQL)
 ```bash
 docker-compose up -d
 ```
@@ -207,7 +180,7 @@ docker-compose up -d
 
 ---
 
-### Passo 3: Executar o Backend (Spring Boot)
+### Passo 2: Executar o Backend (Spring Boot)
 ```bash
 cd backend
 
@@ -222,7 +195,7 @@ cd backend
 
 ---
 
-### Passo 4: Executar o Frontend (Angular)
+### Passo 3: Executar o Frontend (Angular)
 Abra outro terminal:
 ```bash
 cd frontend
@@ -249,7 +222,7 @@ O banco é inicializado automaticamente com os seguintes usuários e empresas pa
 ## 🧪 Execução de Testes Automatizados
 
 ### Testes do Backend (JUnit 5 / Mockito)
-Executa os testes unitários de cálculo do Fator R, enquadramento de faixas, proporcionalidade de RBT12 e utilitários de CNPJ/CPF:
+Executa a suíte completa de testes unitários cobrindo todas as 5 trilhas e o motor do Fator R:
 ```bash
 cd backend
 
@@ -260,7 +233,7 @@ cd backend
 ./mvnw test
 ```
 
-### Testes do Frontend e Contratos Universais (Vitest)
+### Testes do Frontend (Vitest)
 Executa a suíte de testes de validação do CNPJ alfanumérico, formatação monetária, manipulação de datas e contratos de folha e relatórios:
 ```bash
 cd frontend
@@ -270,6 +243,12 @@ npx vitest run
 
 # Executar em modo watch durante desenvolvimento
 npm test
+```
+
+### Build de Produção do Frontend
+```bash
+cd frontend
+npm run build
 ```
 
 ---

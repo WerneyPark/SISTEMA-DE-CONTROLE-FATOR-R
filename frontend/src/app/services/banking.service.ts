@@ -54,4 +54,12 @@ export class BankingService {
       { extratoLancamentoId, contaReceberId, observacao }
     );
   }
+
+  listarConciliacoes(empresaId: string): Observable<ConciliacaoBancariaDTO[]> {
+    return this.http.get<ConciliacaoBancariaDTO[]>(`${this.baseUrl}/conciliacoes/${empresaId}`);
+  }
+
+  desconciliar(conciliacaoId: string): Observable<any> {
+    return this.http.delete<any>(`${this.baseUrl}/conciliacoes/${conciliacaoId}`);
+  }
 }

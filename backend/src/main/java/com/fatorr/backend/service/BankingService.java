@@ -2,6 +2,7 @@ package com.fatorr.backend.service;
 
 import com.fatorr.backend.domain.ConciliacaoBancaria;
 import com.fatorr.backend.domain.ContaReceber;
+import com.fatorr.backend.domain.Empresa;
 import com.fatorr.backend.domain.ExtratoLancamento;
 import com.fatorr.backend.dto.ImportExtratoResponseDTO;
 import com.fatorr.backend.repository.ConciliacaoBancariaRepository;
@@ -21,12 +22,9 @@ import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,6 +35,44 @@ public class BankingService {
     private final ExtratoLancamentoRepository extratoLancamentoRepository;
     private final ContaReceberRepository contaReceberRepository;
     private final ConciliacaoBancariaRepository conciliacaoBancariaRepository;
+    private final TenantResolverService tenantResolverService;
+
+    public record ConciliacaoDetalhadaDTO(
+            String id,
+            String extratoLancamentoId,
+            String contaReceberId,
+            String usuarioId,
+            LocalDateTime dataConciliacao,
+            String observacao,
+            ExtratoLancamento extratoLancamento,
+            ContaReceber contaReceber
+    ) {}
+
+    // ===================== MÉTODOS AUXILIARES DE TENANT =====================
+
+    public List<String> resolverIdentificadoresEmpresa(String empresaId) {
+        Empresa empresa = tenantResolverService.resolveEmpresa(empresaId);
+        List<String> ids = new ArrayList<>();
+        if (empresa.getUuidId() != null && !empresa.getUuidId().isBlank()) {
+            ids.add(empresa.getUuidId());
+        }
+        if (empresa.getId() != null) {
+            String numId = String.valueOf(empresa.getId());
+            if (!ids.contains(numId)) {
+                ids.add(numId);
+            }
+        }
+        return ids;
+    }
+
+    private boolean existeLancamentoPorFitid(List<String> idsEmpresa, String fitid) {
+        for (String id : idsEmpresa) {
+            if (extratoLancamentoRepository.findByEmpresaIdAndFitid(id, fitid).isPresent()) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     // ===================== IMPORTAÇÃO OFX =====================
 
@@ -49,6 +85,9 @@ public class BankingService {
 
     @Transactional
     public ImportExtratoResponseDTO importarOfx(MultipartFile file, String empresaId) throws IOException {
+        String canonicalEmpresaId = tenantResolverService.resolveCanonicalUuid(empresaId);
+        List<String> idsEmpresa = resolverIdentificadoresEmpresa(empresaId);
+
         String conteudo = new String(file.getBytes(), StandardCharsets.UTF_8);
 
         String banco = null;
@@ -74,7 +113,7 @@ public class BankingService {
                 continue;
             }
 
-            if (extratoLancamentoRepository.findByEmpresaIdAndFitid(empresaId, fitid).isPresent()) {
+            if (existeLancamentoPorFitid(idsEmpresa, fitid)) {
                 duplicados++;
                 continue;
             }
@@ -86,7 +125,7 @@ public class BankingService {
 
             ExtratoLancamento lancamento = new ExtratoLancamento();
             lancamento.setId(UUID.randomUUID().toString());
-            lancamento.setEmpresaId(empresaId);
+            lancamento.setEmpresaId(canonicalEmpresaId);
             lancamento.setBanco(banco);
             lancamento.setConta(conta);
             lancamento.setDataLancamento(data);
@@ -130,6 +169,9 @@ public class BankingService {
 
     @Transactional
     public ImportExtratoResponseDTO importarCsv(MultipartFile file, String empresaId) throws IOException {
+        String canonicalEmpresaId = tenantResolverService.resolveCanonicalUuid(empresaId);
+        List<String> idsEmpresa = resolverIdentificadoresEmpresa(empresaId);
+
         List<ExtratoLancamento> importados = new ArrayList<>();
         int duplicados = 0;
         int total = 0;
@@ -148,17 +190,17 @@ public class BankingService {
                 total++;
                 String fitid = record.isSet("fitid") ? record.get("fitid") : null;
                 if (fitid == null || fitid.isBlank()) {
-                    fitid = gerarFitidSintetico(empresaId, record);
+                    fitid = gerarFitidSintetico(canonicalEmpresaId, record);
                 }
 
-                if (extratoLancamentoRepository.findByEmpresaIdAndFitid(empresaId, fitid).isPresent()) {
+                if (existeLancamentoPorFitid(idsEmpresa, fitid)) {
                     duplicados++;
                     continue;
                 }
 
                 ExtratoLancamento lancamento = new ExtratoLancamento();
                 lancamento.setId(UUID.randomUUID().toString());
-                lancamento.setEmpresaId(empresaId);
+                lancamento.setEmpresaId(canonicalEmpresaId);
                 lancamento.setDataLancamento(LocalDate.parse(record.get("data")));
                 lancamento.setDescricao(record.get("descricao"));
                 lancamento.setValor(new BigDecimal(record.get("valor")).abs());
@@ -198,10 +240,17 @@ public class BankingService {
         ContaReceber conta = contaReceberRepository.findById(contaReceberId)
                 .orElseThrow(() -> new IllegalArgumentException("Conta a receber não encontrada"));
 
-        if ("CONCILIADO".equals(extrato.getStatusConciliacao())) {
+        Empresa empExtrato = tenantResolverService.resolveEmpresa(extrato.getEmpresaId());
+        Empresa empConta = tenantResolverService.resolveEmpresa(conta.getEmpresaId());
+
+        if (!empExtrato.getId().equals(empConta.getId())) {
+            throw new IllegalArgumentException("O extrato e a conta a receber pertencem a empresas distintas");
+        }
+
+        if ("CONCILIADO".equalsIgnoreCase(extrato.getStatusConciliacao())) {
             throw new IllegalStateException("Este lançamento já está conciliado");
         }
-        if ("PAGO".equals(conta.getStatus())) {
+        if ("PAGO".equalsIgnoreCase(conta.getStatus())) {
             throw new IllegalStateException("Este título já está pago");
         }
 
@@ -216,19 +265,99 @@ public class BankingService {
         conciliacao.setId(UUID.randomUUID().toString());
         conciliacao.setExtratoLancamentoId(extratoLancamentoId);
         conciliacao.setContaReceberId(contaReceberId);
-        conciliacao.setUsuarioId(usuarioId);
+        conciliacao.setUsuarioId(usuarioId != null ? usuarioId : "SISTEMA");
+        conciliacao.setDataConciliacao(LocalDateTime.now());
         conciliacao.setObservacao(observacao);
 
         return conciliacaoBancariaRepository.save(conciliacao);
     }
 
+    // ===================== DESCONCILIAR =====================
+
+    @Transactional
+    public void desconciliar(String conciliacaoId) {
+        ConciliacaoBancaria conciliacao = conciliacaoBancariaRepository.findById(conciliacaoId)
+                .orElseThrow(() -> new IllegalArgumentException("Conciliação não encontrada: " + conciliacaoId));
+
+        if (conciliacao.getExtratoLancamentoId() != null) {
+            extratoLancamentoRepository.findById(conciliacao.getExtratoLancamentoId()).ifPresent(extrato -> {
+                extrato.setStatusConciliacao("PENDENTE");
+                extratoLancamentoRepository.save(extrato);
+            });
+        }
+
+        if (conciliacao.getContaReceberId() != null) {
+            contaReceberRepository.findById(conciliacao.getContaReceberId()).ifPresent(conta -> {
+                conta.setStatus("PENDENTE");
+                conta.setDataPagamento(null);
+                contaReceberRepository.save(conta);
+            });
+        }
+
+        conciliacaoBancariaRepository.delete(conciliacao);
+    }
+
     // ===================== CONSULTAS =====================
 
     public List<ExtratoLancamento> listarLancamentosPendentes(String empresaId) {
-        return extratoLancamentoRepository.findByEmpresaIdAndStatusConciliacao(empresaId, "PENDENTE");
+        List<String> ids = resolverIdentificadoresEmpresa(empresaId);
+        Map<String, ExtratoLancamento> mapa = new LinkedHashMap<>();
+        for (String id : ids) {
+            List<ExtratoLancamento> lista = extratoLancamentoRepository.findByEmpresaIdAndStatusConciliacao(id, "PENDENTE");
+            for (ExtratoLancamento l : lista) {
+                mapa.putIfAbsent(l.getId(), l);
+            }
+        }
+        return new ArrayList<>(mapa.values());
     }
 
     public List<ContaReceber> listarContasPendentes(String empresaId) {
-        return contaReceberRepository.findByEmpresaIdAndStatus(empresaId, "PENDENTE");
+        List<String> ids = resolverIdentificadoresEmpresa(empresaId);
+        Map<String, ContaReceber> mapa = new LinkedHashMap<>();
+        for (String id : ids) {
+            List<ContaReceber> lista = contaReceberRepository.findByEmpresaIdAndStatus(id, "PENDENTE");
+            for (ContaReceber c : lista) {
+                mapa.putIfAbsent(c.getId(), c);
+            }
+        }
+        return new ArrayList<>(mapa.values());
+    }
+
+    public List<ConciliacaoDetalhadaDTO> listarConciliacoes(String empresaId) {
+        List<String> ids = resolverIdentificadoresEmpresa(empresaId);
+        Map<String, ConciliacaoDetalhadaDTO> mapa = new LinkedHashMap<>();
+
+        for (String id : ids) {
+            List<ExtratoLancamento> extratos = extratoLancamentoRepository.findByEmpresaIdAndStatusConciliacao(id, "CONCILIADO");
+            for (ExtratoLancamento ext : extratos) {
+                Optional<ConciliacaoBancaria> opt = conciliacaoBancariaRepository.findByExtratoLancamentoId(ext.getId());
+                if (opt.isPresent()) {
+                    ConciliacaoBancaria conc = opt.get();
+                    ContaReceber conta = null;
+                    if (conc.getContaReceberId() != null) {
+                        conta = contaReceberRepository.findById(conc.getContaReceberId()).orElse(null);
+                    }
+                    mapa.put(conc.getId(), new ConciliacaoDetalhadaDTO(
+                            conc.getId(),
+                            conc.getExtratoLancamentoId(),
+                            conc.getContaReceberId(),
+                            conc.getUsuarioId(),
+                            conc.getDataConciliacao(),
+                            conc.getObservacao(),
+                            ext,
+                            conta
+                    ));
+                }
+            }
+        }
+
+        List<ConciliacaoDetalhadaDTO> resultado = new ArrayList<>(mapa.values());
+        resultado.sort((a, b) -> {
+            if (a.dataConciliacao() == null && b.dataConciliacao() == null) return 0;
+            if (a.dataConciliacao() == null) return 1;
+            if (b.dataConciliacao() == null) return -1;
+            return b.dataConciliacao().compareTo(a.dataConciliacao());
+        });
+        return resultado;
     }
 }

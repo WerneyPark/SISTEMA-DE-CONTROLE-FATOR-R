@@ -6,7 +6,7 @@ import { takeUntil } from 'rxjs/operators';
 import { BankingService } from '../../services/banking.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
 import { AuthService } from '../../services/auth.service';
-import { ExtratoLancamentoDTO } from '../../shared/types/banking.types';
+import { ExtratoLancamentoDTO, ConciliacaoBancariaDTO } from '../../shared/types/banking.types';
 import { ContaReceberDTO } from '../../shared/types/receivables.types';
 
 @Component({
@@ -19,13 +19,19 @@ import { ContaReceberDTO } from '../../shared/types/receivables.types';
 export class BankingComponent implements OnInit, OnDestroy {
   lancamentos: ExtratoLancamentoDTO[] = [];
   contas: ContaReceberDTO[] = [];
+  historico: ConciliacaoBancariaDTO[] = [];
+
+  abaAtiva: 'pendentes' | 'historico' = 'pendentes';
+
   loading = true;
+  loadingHistorico = false;
   importando = false;
 
   lancamentoSelecionado: ExtratoLancamentoDTO | null = null;
   contaSelecionada: ContaReceberDTO | null = null;
   observacao = '';
   conciliando = false;
+  desconciliandoId: string | null = null;
   mensagemErro = '';
   mensagemSucesso = '';
 
@@ -41,7 +47,7 @@ export class BankingComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const usuario = this.authService.getCurrentUser();
-    this.usuarioId = usuario?.uuidId ?? null;
+    this.usuarioId = usuario?.uuidId || (usuario?.id ? String(usuario.id) : null);
 
     this.empresaContextService.empresaSelecionada$
       .pipe(takeUntil(this.destroy$))
@@ -53,6 +59,7 @@ export class BankingComponent implements OnInit, OnDestroy {
           this.loading = false;
           this.lancamentos = [];
           this.contas = [];
+          this.historico = [];
         } else {
           this.mensagemErro = '';
           this.carregarDados();
@@ -63,6 +70,15 @@ export class BankingComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  setAba(aba: 'pendentes' | 'historico') {
+    this.abaAtiva = aba;
+    this.mensagemErro = '';
+    this.mensagemSucesso = '';
+    if (aba === 'historico') {
+      this.carregarHistorico();
+    }
   }
 
   carregarDados() {
@@ -81,6 +97,8 @@ export class BankingComponent implements OnInit, OnDestroy {
         this.loading = false;
       }
     });
+
+    this.carregarHistorico();
   }
 
   private carregarContas() {
@@ -95,6 +113,41 @@ export class BankingComponent implements OnInit, OnDestroy {
         this.loading = false;
       }
     });
+  }
+
+  carregarHistorico() {
+    if (!this.empresaId) return;
+    this.loadingHistorico = true;
+    this.bankingService.listarConciliacoes(this.empresaId).subscribe({
+      next: (dados) => {
+        this.historico = dados;
+        this.loadingHistorico = false;
+      },
+      error: (err) => {
+        console.error('Erro ao carregar histórico de conciliações', err);
+        this.loadingHistorico = false;
+      }
+    });
+  }
+
+  // ===================== SUGESTÃO E COMBINAÇÃO VISUAL =====================
+
+  temSugestaoLancamento(lancamento: ExtratoLancamentoDTO): boolean {
+    return this.contas.some(conta => Math.abs(Number(conta.valorTotal) - Number(lancamento.valor)) < 0.001);
+  }
+
+  temSugestaoConta(conta: ContaReceberDTO): boolean {
+    return this.lancamentos.some(lancamento => Math.abs(Number(lancamento.valor) - Number(conta.valorTotal)) < 0.001);
+  }
+
+  isMatchComSelecionado(lancamento: ExtratoLancamentoDTO): boolean {
+    if (!this.contaSelecionada) return false;
+    return Math.abs(Number(lancamento.valor) - Number(this.contaSelecionada.valorTotal)) < 0.001;
+  }
+
+  isContaMatchComSelecionado(conta: ContaReceberDTO): boolean {
+    if (!this.lancamentoSelecionado) return false;
+    return Math.abs(Number(conta.valorTotal) - Number(this.lancamentoSelecionado.valor)) < 0.001;
   }
 
   selecionarLancamento(lancamento: ExtratoLancamentoDTO) {
@@ -115,10 +168,12 @@ export class BankingComponent implements OnInit, OnDestroy {
   }
 
   confirmarConciliacao() {
-    if (!this.lancamentoSelecionado || !this.contaSelecionada || !this.usuarioId) {
-      this.mensagemErro = 'Selecione um lançamento e uma conta para conciliar.';
+    if (!this.lancamentoSelecionado || !this.contaSelecionada) {
+      this.mensagemErro = 'Selecione um lançamento bancário e um título a receber para conciliar.';
       return;
     }
+
+    const usuarioIdFinal = this.usuarioId || 'SISTEMA';
 
     this.conciliando = true;
     this.mensagemErro = '';
@@ -127,7 +182,7 @@ export class BankingComponent implements OnInit, OnDestroy {
       .conciliar(
         this.lancamentoSelecionado.id,
         this.contaSelecionada.id,
-        this.usuarioId,
+        usuarioIdFinal,
         this.observacao || undefined
       )
       .subscribe({
@@ -142,6 +197,28 @@ export class BankingComponent implements OnInit, OnDestroy {
           this.conciliando = false;
         }
       });
+  }
+
+  desconciliar(conciliacao: ConciliacaoBancariaDTO) {
+    if (!confirm('Deseja realmente desfazer esta conciliação? O extrato e o título voltarão para o status PENDENTE.')) {
+      return;
+    }
+
+    this.desconciliandoId = conciliacao.id;
+    this.mensagemErro = '';
+    this.mensagemSucesso = '';
+
+    this.bankingService.desconciliar(conciliacao.id).subscribe({
+      next: () => {
+        this.mensagemSucesso = 'Conciliação desfeita com sucesso! Os lançamentos retornaram aos pendentes.';
+        this.desconciliandoId = null;
+        this.carregarDados();
+      },
+      error: (err) => {
+        this.mensagemErro = err?.error?.erro || 'Erro ao desconciliar lançamento.';
+        this.desconciliandoId = null;
+      }
+    });
   }
 
   onArquivoSelecionado(event: Event, tipo: 'csv' | 'ofx') {
@@ -173,7 +250,24 @@ export class BankingComponent implements OnInit, OnDestroy {
     });
   }
 
-  formatarValor(valor: number): string {
-    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  formatarValor(valor?: number | null): string {
+    if (valor == null) return 'R$ 0,00';
+    return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  formatarData(dataStr?: string | null): string {
+    if (!dataStr) return '-';
+    // Suporta yyyy-MM-dd ou yyyy-MM-ddTHH:mm:ss
+    const partes = dataStr.split('T');
+    const dataPart = partes[0].split('-');
+    if (dataPart.length === 3) {
+      const dataFormatada = `${dataPart[2]}/${dataPart[1]}/${dataPart[0]}`;
+      if (partes[1]) {
+        const horaPart = partes[1].substring(0, 5);
+        return `${dataFormatada} às ${horaPart}`;
+      }
+      return dataFormatada;
+    }
+    return dataStr;
   }
 }

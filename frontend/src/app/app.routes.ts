@@ -8,7 +8,10 @@ import { LoginComponent } from './pages/login/login';
 import { ParametrosPadraoComponent } from './pages/parametros-padrao/parametros-padrao';
 import { UsuariosAdminComponent } from './pages/usuarios-admin/usuarios-admin';
 import { AuthGuard } from './services/auth.guard';
+import { ContasAReceberComponent } from './pages/contas-a-receber/contas-a-receber';
 import { BankingComponent } from './pages/banking/banking';
+import { PayrollComponent } from './pages/payroll/payroll';
+import { ReportsComponent } from './pages/reports/reports';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -18,9 +21,12 @@ export const routes: Routes = [
     component: MainLayoutComponent,
     canActivate: [AuthGuard],
     children: [
-      { path: 'banking', component: BankingComponent },
       { path: 'home', component: HomeComponent },
       { path: 'simulador', component: SimuladorComponent },
+      { path: 'contas-a-receber', component: ContasAReceberComponent },
+      { path: 'banking', component: BankingComponent },
+      { path: 'payroll', component: PayrollComponent },
+      { path: 'reports', component: ReportsComponent },
       { path: 'empresas', component: EmpresasComponent },
       { path: 'parametros', component: ParametrosComponent },
       { path: 'parametros-padrao', component: ParametrosPadraoComponent },

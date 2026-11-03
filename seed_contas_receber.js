@@ -21,7 +21,10 @@ async function run() {
     
     const clienteId = crypto.randomUUID(); 
     try {
-        await client.query("INSERT INTO clientes (id, empresa_id, nome, cpf_cnpj, status) VALUES ($1, $2, $3, $4, 'ATIVO') ON CONFLICT DO NOTHING", [clienteId, emp.id, 'Cliente Teste ' + emp.razao_social, '00000000000']);
+        await client.query(
+          "INSERT INTO clientes_fornecedores (id, empresa_id, nome, cnpj_cpf, tipo) VALUES ($1, $2, $3, $4, 'CLIENTE') ON CONFLICT DO NOTHING",
+          [clienteId, empresaIdStr, 'Cliente Teste ' + emp.razao_social, '00000000000']
+        );
     } catch(e) {
         console.log('Nao foi possivel inserir cliente de teste (ignorando)', e.message);
     }

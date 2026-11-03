@@ -1,125 +1,134 @@
-# 📖 GUIA DE DESENVOLVIMENTO E DIVISÃO DE TAREFAS
+# 📖 GUIA DE DESENVOLVIMENTO E ARQUITETURA CONSOLIDADA
 
-Este documento contém o roadmap, as regras de arquitetura e as instruções para os desenvolvedores que atuarão nas novas funcionalidades do sistema.
+Este documento contém o roadmap, as regras de arquitetura e o status de implementação das funcionalidades do **Sistema de Controle Fator R**.
 
 ---
 
-## 🏛️ REGRAS GERAIS DE ARQUITETURA (OBRIGATÓRIO PARA TODOS)
+## 🏛️ REGRAS GERAIS DE ARQUITETURA OFICIAL (JAVA 21 + SPRING BOOT 4 + ANGULAR 21)
 
-1. **CNPJ Alfanumérico (Padrão RFB)**:
+1. **Stack Tecnológica Consolidada**:
+   - **Backend**: Java 21 LTS / Spring Boot 4.0.6 em `backend/src/main/java/com/fatorr/backend/`
+   - **Frontend**: Angular 21.2 (Standalone Components, RxJS) em `frontend/src/app/`
+   - **Banco de Dados**: PostgreSQL 16 (Docker Compose)
+   - **Persistência**: Hibernate ORM com suporte a multi-tenancy e `TenantResolverService`.
+
+2. **CNPJ Alfanumérico (Padrão RFB)**:
    - Todo campo de CNPJ no banco, backend e frontend é do tipo `String / VARCHAR(20)`.
-   - Utilize sempre as funções de `src/shared/utils/cnpj.ts`:
-     - `maskCnpj(valor)`: Aplica a máscara `XX.XXX.XXX/XXXX-XX` (suporta letras e números).
-     - `unmaskCnpj(valor)`: Remove caracteres especiais e retorna string limpa em caixa alta.
-     - `isValidCnpj(valor)`: Valida se possui 14 caracteres alfanuméricos válidos.
+   - Utilize sempre as funções de utilitários:
+     - Java: `com.fatorr.backend.util.CnpjUtils` (`mask`, `unmask`, `isValid`)
+     - TypeScript: `frontend/src/app/shared/utils/cnpj.ts` (`maskCnpj`, `unmaskCnpj`, `isValidCnpj`)
 
-2. **Isolamento de Código (Evite conflitos de Merge)**:
-   - Cada trilha deve trabalhar **exclusivamente** dentro da pasta do seu respectivo módulo em `src/modules/` e no frontend em `src/app/pages/<modulo>/`.
-   - Não altere as pastas de outros módulos nem os tipos globais sem alinhamento prévio.
-
-3. **Tipos e Contratos**:
-   - Utilize os tipos compartilhados definidos em `src/shared/types/` (`auth.types.ts`, `receivables.types.ts`, `banking.types.ts`, `payroll.types.ts`, `reports.types.ts`, `common.types.ts`).
+3. **CPF Estritamente Numérico**:
+   - Armazenado no banco com 11 dígitos numéricos limpos (`VARCHAR(14)`).
+   - Java: `com.fatorr.backend.util.CpfUtils` (`mask`, `unmask`, `isValid`)
+   - TypeScript: `frontend/src/app/shared/utils/formatters.ts` (`maskCpf`, `unmaskCpf`, `isValidCpf`)
 
 ---
 
-## 🚀 TRILHAS DE DESENVOLVIMENTO PARALELO (5 DESENVOLVEDORES)
+## 🚀 STATUS DAS 5 TRILHAS DE DESENVOLVIMENTO (100% IMPLEMENTADAS)
 
 ---
 
 ### 🔹 TRILHA 1: Autenticação, Perfis (RBAC) e Multi-Empresas
-- **Branch**: `feature/auth-rbac-empresas`
-- **Pasta de Trabalho**: `src/modules/auth/` e `frontend/src/app/pages/auth/`
-- **Tarefas Principais**:
-  - [ ] Implementar fluxo de Login com JWT e Refresh Token no backend e interceptor no frontend.
-  - [ ] Implementar fluxo de Recuperação de Senha (e-mail + token com tempo de expiração).
-  - [ ] Cadastro com seleção de perfil:
-    - **Contador**: Obriga informar CRC e Organização Contábil (`organizacoes_contabeis`).
-    - **Empresário**: Permite vincular a múltiplos CNPJs alfanuméricos.
-    - **Usuário Colaborador**: Informa o CNPJ da empresa (status fica `PENDENTE`).
-  - [ ] Painel do Contabilista (Admin):
-    - Cadastro inicial de empresas vinculadas à sua contabilidade.
-    - Aprovação / Rejeição de solicitações de vínculos de usuários.
-    - Pré-cadastro de usuário informando apenas **CPF** e **Função** (quando o usuário se registrar com o CPF, é ativado e vinculado automaticamente).
-  - [ ] Endpoint/Contexto para troca de empresa ativa (`empresaIdAtiva`).
+- **Status**: ✅ **100% Concluída**
+- **Arquivos Backend**:
+  - `backend/src/main/java/com/fatorr/backend/util/JwtUtils.java`
+  - `backend/src/main/java/com/fatorr/backend/service/AuthService.java`
+  - `backend/src/main/java/com/fatorr/backend/controller/AuthController.java`
+  - `backend/src/main/java/com/fatorr/backend/controller/UsuarioController.java`
+  - `backend/src/test/java/com/fatorr/backend/service/AuthServiceTest.java`
+- **Arquivos Frontend**:
+  - `frontend/src/app/services/auth.interceptor.ts`
+  - `frontend/src/app/services/auth.service.ts`
+  - `frontend/src/app/services/usuario.service.ts`
+  - `frontend/src/app/pages/login/` (Entrar, Cadastro por Perfil, Recuperação de Senha)
+  - `frontend/src/app/pages/usuarios-admin/` (Pré-cadastro por CPF, Gestão de Vínculos Pendentes)
+- **Tarefas Realizadas**:
+  - [x] Login com JWT (HMAC-SHA256), Refresh Token, BCryptPasswordEncoder com fallback seguro e HTTP Interceptor.
+  - [x] Recuperação e Redefinição de Senha com token de 1h de expiração.
+  - [x] Cadastro com seleção de perfil: Contador (com CRC e Organização), Empresário (múltiplos CNPJs) e Colaborador.
+  - [x] Painel do Contabilista: pré-cadastro por CPF + Função e aprovação/rejeição de vínculos pendentes.
+  - [x] Contexto global para troca de empresa ativa (`EmpresaContextService`).
 
 ---
 
 ### 🔹 TRILHA 2: Contas a Receber e Importação de XML de Notas Fiscais
-- **Branch**: `feature/contas-a-receber-xml`
-- **Pasta de Trabalho**: `src/modules/receivables/` e `frontend/src/app/pages/receivables/`
-- **Tarefas Principais**:
-  - [ ] CRUD de Contas a Receber com paginação e filtros (por período, status e cliente).
-  - [ ] Ação de Baixa Manual de título (muda status para `PAGO` e grava data de pagamento).
-  - [ ] Parser de XML de Notas Fiscais (NFS-e e NF-e padrão nacional):
-    - Extrair dados do Prestador (Emitente), Tomador (Cliente), Valor, Data e Parcelas.
-    - Validar se o Emitente é a empresa ativa logada.
-    - **Auto-cadastro**: Se o Tomador não existir no banco da empresa, cadastrar automaticamente em `clientes_fornecedores` com CNPJ alfanumérico.
-    - Gerar o lançamento em `contas_a_receber` com `origem = 'IMPORTACAO_XML'`.
-  - [ ] Frontend: Listagem de títulos com badges de status e Modal de Upload de XML com pré-visualização antes de salvar.
+- **Status**: ✅ **100% Concluída**
+- **Arquivos Backend**:
+  - `backend/src/main/java/com/fatorr/backend/controller/ContaReceberController.java`
+  - `backend/src/main/java/com/fatorr/backend/service/ContaReceberService.java`
+  - `backend/src/main/java/com/fatorr/backend/service/LeitorXmlNfeService.java`
+  - `backend/src/test/java/com/fatorr/backend/service/LeitorXmlNfeServiceTest.java`
+- **Arquivos Frontend**:
+  - `frontend/src/app/services/conta-receber.service.ts`
+  - `frontend/src/app/pages/contas-a-receber/`
+- **Tarefas Realizadas**:
+  - [x] CRUD completo de Contas a Receber com paginação e filtros por período, status e cliente.
+  - [x] Baixa Manual de títulos (status `PAGO`, data de pagamento) e cancelamento.
+  - [x] Parser seguro de XML de NF-e e NFS-e contra injeção XXE.
+  - [x] Validação de emitente pertencente à empresa ativa logada e deduplicação por chave de acesso.
+  - [x] Auto-cadastro do tomador em `clientes_fornecedores` com CNPJ alfanumérico.
+  - [x] Suporte a múltiplas parcelas (`<dup>`).
+  - [x] Interface completa com badges de status e Modal de Upload de XML com **Pré-visualização antes de salvar**.
 
 ---
 
 ### 🔹 TRILHA 3: Extrato Bancário e Conciliação Manual
-- **Branch**: `feature/extrato-conciliacao-manual`
-- **Pasta de Trabalho**: `src/modules/banking/` e `frontend/src/app/pages/banking/`
-- **Tarefas Principais**:
-  - [ ] Parser de arquivos de extrato **OFX** e **CSV**:
-    - Extrair Data, Descrição, Valor, Tipo (Débito/Crédito) e `FITID`.
-    - Salvar em `extrato_lancamentos` ignorando transações duplicadas (mesmo `fitid` para a mesma empresa).
-  - [ ] Endpoint de Conciliação Manual em transação atômica:
-    - Recebe `extratoLancamentoId` e `contaReceberId`.
-    - Atualiza o extrato para `CONCILIADO`, o título para `PAGO` e grava registro na tabela `conciliacoes_bancarias`.
-  - [ ] Frontend: Tela de Conciliação em Split-View (Lado esquerdo: Lançamentos bancários; Lado direito: Títulos a receber) permitindo seleção e vinculação manual com 1 clique.
+- **Status**: ✅ **100% Concluída**
+- **Arquivos Backend**:
+  - `backend/src/main/java/com/fatorr/backend/controller/BankingController.java`
+  - `backend/src/main/java/com/fatorr/backend/service/BankingService.java`
+  - `backend/src/test/java/com/fatorr/backend/service/BankingServiceTest.java`
+  - `seed_contas_receber.js` (corrigido para `clientes_fornecedores`)
+- **Arquivos Frontend**:
+  - `frontend/src/app/services/banking.service.ts`
+  - `frontend/src/app/pages/banking/`
+- **Tarefas Realizadas**:
+  - [x] Parser de arquivos **OFX** e **CSV** com deduplicação por `FITID` e FITID sintético.
+  - [x] Conciliação manual atômica (`@Transactional`) com validação estrita de multi-tenancy.
+  - [x] Histórico de conciliações com detalhes dos lançamentos e títulos vinculados.
+  - [x] Ação de **Desconciliação** em 1 clique (estorno com restauração de status).
+  - [x] Interface Split-View com **Sugestões Inteligentes de Pareamento** por correspondência de valor.
 
 ---
 
 ### 🔹 TRILHA 4: Gestão Avançada e Importação de Folha de Pagamento (eSocial / ERP Contábil)
-- **Branch**: `feature/folha-pagamento-esocial`
-- **Pasta de Trabalho**: `src/modules/payroll/` e `frontend/src/app/pages/payroll/`
-- **Tarefas Principais**:
-  - [ ] Modelagem e CRUD de Folha de Pagamento Detalhada (`folhas_detalhadas`):
-    - Discriminação de Salários/Ordenados, Pró-Labore de Sócios, 13º Salário, INSS Patronal e FGTS.
-  - [ ] Parser de arquivos de Folha de Pagamento:
-    - **eSocial XML**: Extração dos eventos `S-1200` (Remuneração) e `S-1210` (Pagamentos).
-    - **CSV/Excel Analítico**: Importador para relatórios exportados por ERPs contábeis (Domínio Sistemas, Alterdata, Fortes, Questor).
-  - [ ] Atualização automática e atômica da tabela `folhas_pagamento` da competência para alimentar o cálculo do Fator R.
-  - [ ] **Calculadora de Pró-Labore Mínimo Ideal**:
-    - Endpoint que calcula o valor exato de pró-labore que a empresa precisa retirar para atingir a margem de 28% (Anexo III) com a menor carga tributária combinada (INSS + IRPF).
-  - [ ] Frontend: Dashboard da folha de pagamento, upload de arquivos com preview analítico e simulador interativo de pró-labore ideal.
+- **Status**: ✅ **100% Concluída**
+- **Arquivos Backend**:
+  - `backend/src/main/java/com/fatorr/backend/controller/PayrollController.java`
+  - `backend/src/main/java/com/fatorr/backend/service/PayrollService.java`
+  - `backend/src/main/java/com/fatorr/backend/dto/ImportFolhaResponseDTO.java`
+  - `backend/src/main/java/com/fatorr/backend/dto/ProLaboreIdealDTO.java`
+  - `backend/src/test/java/com/fatorr/backend/service/PayrollServiceTest.java`
+- **Arquivos Frontend**:
+  - `frontend/src/app/services/payroll.service.ts`
+  - `frontend/src/app/pages/payroll/`
+- **Tarefas Realizadas**:
+  - [x] Modelagem e CRUD de Folha de Pagamento Detalhada (`folhas_detalhadas`).
+  - [x] **Sincronização Atômica com Fator R**: atualização imediata da tabela `folhas_pagamento` da competência.
+  - [x] Parser XML do eSocial eventos **S-1200** e **S-1210** com discriminação entre salários CLT e pró-labore de sócios.
+  - [x] Importador de planilhas CSV e Excel (`.xlsx` via Apache POI) de ERPs contábeis (Domínio, Alterdata, Fortes, Questor).
+  - [x] **Calculadora de Pró-Labore Mínimo Ideal**: cálculo do pró-labore exato para atingir 28% (Anexo III) ponderando INSS sócio (11% com teto) e tabela progressiva de IRPF vs. economia no Simples Nacional.
+  - [x] Dashboard analítico da folha com simulador interativo de Pró-Labore Ideal.
 
 ---
 
 ### 🔹 TRILHA 5: Dossiê Tributário, Emissão de Parecer Técnico (PDF/Excel) e Auditoria Fiscal
-- **Branch**: `feature/dossie-relatorios-tributarios`
-- **Pasta de Trabalho**: `src/modules/reports/` e `frontend/src/app/pages/reports/`
-- **Tarefas Principais**:
-  - [ ] Motor de Geração de Documentos em PDF (OpenPDF / Thymeleaf-PDF):
-    - **Laudo Executivo de Enquadramento do Fator R**: Documento formal timbrado com identificação da contabilidade (CRC do contador) e da empresa cliente.
-    - **Memória de Cálculo de 12 Meses**: Discriminação analítica de todas as receitas e folhas da janela deslizante.
-    - **Estudo Comparativo Simples vs Lucro Presumido**: Tabela comparativa e economia estimada anualizada.
-    - **Parecer Conclusivo e Projeções Futuras**: Parecer recomendatório para os cenários Otimista, Neutro e Pessimista.
-  - [ ] Exportação Analítica em Planilha Excel (`.xlsx` via Apache POI):
-    - Tabela auditável com fórmulas dinâmicas para conferência de contadores e peritos tributários.
-  - [ ] Registro e Autenticidade de Laudos (`laudos_tributarios`):
-    - Armazenamento de metadados, usuário emissor e código hash SHA-256 para verificação de autenticidade documental.
-  - [ ] Frontend: Central de Emissão de Dossiês com opções de personalização, pré-visualizador de PDF no navegador e histórico de laudos gerados.
-
----
-
-## 🌿 FLUXO DE GIT PARA CADA DESENVOLVEDOR
-
-1. **Iniciar a tarefa**:
-   ```bash
-   git checkout main
-   git pull origin main
-   git checkout -b feature/nome-da-sua-trilha
-   ```
-
-2. **Commit e Boas Práticas**:
-   - Faça commits atômicos utilizando o padrão Conventional Commits (ex: `feat(payroll): adiciona parser para esocial s-1200`, `feat(reports): cria motor de geracao de laudo em pdf`).
-
-3. **Submeter para Revisão**:
-   ```bash
-   git push -u origin feature/nome-da-sua-trilha
-   ```
-   - Abra um Pull Request direcionado à branch principal do projeto.
+- **Status**: ✅ **100% Concluída**
+- **Arquivos Backend**:
+  - `backend/src/main/java/com/fatorr/backend/controller/ReportsController.java`
+  - `backend/src/main/java/com/fatorr/backend/service/ReportsService.java`
+  - `backend/src/main/java/com/fatorr/backend/dto/ParametrosEmissaoLaudoDTO.java`
+  - `backend/src/main/java/com/fatorr/backend/dto/ValidacaoLaudoResponseDTO.java`
+  - `backend/src/test/java/com/fatorr/backend/service/ReportsServiceTest.java`
+- **Arquivos Frontend**:
+  - `frontend/src/app/services/reports.service.ts`
+  - `frontend/src/app/pages/reports/`
+- **Tarefas Realizadas**:
+  - [x] Motor de geração de **Laudos em PDF timbrados (`OpenPDF`)** com identificação da contabilidade (CRC do contador) e empresa cliente.
+  - [x] Memória de cálculo analítica de 12 meses ($M-12$ a $M-1$).
+  - [x] Estudo comparativo Simples Nacional vs. Lucro Presumido com economia estimada.
+  - [x] Projeções futuras para $M+1$ e $M+2$ nos cenários Otimista, Neutro e Pessimista.
+  - [x] Exportação analítica em **Planilha Excel (`.xlsx` via Apache POI)** com abas estilizadas e fórmulas dinâmicas (`SUM`).
+  - [x] Certificado de Autenticidade com **Hash SHA-256** gravado em `laudos_tributarios`.
+  - [x] Central de emissão com pré-visualizador de PDF no navegador, histórico e validador público de laudos por hash.

@@ -1,0 +1,417 @@
+<div class="reports-container">
+  <!-- Cabeçalho Principal -->
+  <div class="page-header">
+    <div class="header-titles">
+      <h2>Dossiê Tributário & Emissão de Parecer Técnico</h2>
+      <p class="subtitle">Gere laudos fiscais timbrados em PDF com OpenPDF, planilhas auditáveis em Excel com Apache POI e valide autenticidade documental por Hash SHA-256</p>
+    </div>
+
+    <div class="header-status" *ngIf="empresaSelecionada">
+      <span class="empresa-badge">
+        <svg class="icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 21h18M3 7v14M21 7v14M6 10h2M10 10h2M14 10h2M6 14h2M10 14h2M14 14h2M6 18h2M10 18h2M14 18h2M3 7l9-4 9 4"/>
+        </svg>
+        {{ empresaSelecionada.razaoSocial }} ({{ empresaSelecionada.cnpj }})
+      </span>
+    </div>
+  </div>
+
+  <!-- Aviso de Empresa Não Selecionada -->
+  <div *ngIf="!empresaSelecionada" class="alerta alerta-aviso">
+    <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <span>Nenhuma empresa selecionada. Por favor, selecione uma empresa no menu superior para emitir e consultar laudos.</span>
+  </div>
+
+  <!-- Navegação por Abas -->
+  <div class="tabs-nav">
+    <button
+      class="tab-btn"
+      [class.active]="abaAtiva === 'emissao'"
+      (click)="setAba('emissao')"
+    >
+      <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+      <span>Central de Emissão</span>
+    </button>
+
+    <button
+      class="tab-btn"
+      [class.active]="abaAtiva === 'historico'"
+      (click)="setAba('historico')"
+    >
+      <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span>Histórico de Laudos</span>
+      <span class="tab-badge" *ngIf="historicoLaudos.length > 0">{{ historicoLaudos.length }}</span>
+    </button>
+
+    <button
+      class="tab-btn"
+      [class.active]="abaAtiva === 'validacao'"
+      (click)="setAba('validacao')"
+    >
+      <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <polyline points="9 12 11 14 15 10"/>
+      </svg>
+      <span>Auditoria Fiscal & Hash SHA-256</span>
+    </button>
+  </div>
+
+  <!-- Alertas de Feedback -->
+  <div *ngIf="mensagemErro" class="alerta alerta-erro">
+    <span>{{ mensagemErro }}</span>
+  </div>
+  <div *ngIf="mensagemSucesso" class="alerta alerta-sucesso">
+    <span>{{ mensagemSucesso }}</span>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- ABA 1: CENTRAL DE EMISSÃO                                     -->
+  <!-- ============================================================== -->
+  <div *ngIf="abaAtiva === 'emissao'" class="tab-content">
+    <div class="emissao-grid">
+      <!-- Formulário de Configuração -->
+      <div class="card-painel config-painel">
+        <h3 class="card-title">
+          <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Parâmetros do Laudo Fiscal
+        </h3>
+
+        <!-- Seleção de Competência -->
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label class="form-label">Ano de Referência</label>
+            <input type="number" [(ngModel)]="anoCompetencia" class="form-input" min="2020" max="2035" />
+          </div>
+          <div class="form-group flex-2">
+            <label class="form-label">Mês da Competência</label>
+            <select [(ngModel)]="mesCompetencia" class="form-select">
+              <option *ngFor="let m of meses" [value]="m.valor">{{ m.nome }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tipo de Laudo -->
+        <div class="form-group">
+          <label class="form-label">Tipo de Parecer / Documento</label>
+          <div class="tipo-laudo-opcoes">
+            <label
+              *ngFor="let t of tiposLaudo"
+              class="tipo-opcao"
+              [class.selecionado]="tipoLaudo === t.valor"
+            >
+              <input type="radio" name="tipoLaudoRadio" [value]="t.valor" [(ngModel)]="tipoLaudo" />
+              <div class="tipo-info">
+                <span class="tipo-nome">{{ t.label }}</span>
+                <span class="tipo-desc">{{ t.descricao }}</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Opções Adicionais -->
+        <div class="form-group checkboxes-grupo">
+          <label class="checkbox-item">
+            <input type="checkbox" [(ngModel)]="incluirProjecaoCenarios" />
+            <span>Incluir Projeção de Cenários Futuros (Otimista, Neutro e Pessimista para M+1 e M+2)</span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" [(ngModel)]="incluirAssinaturaContador" />
+            <span>Incluir Bloco de Assinatura do Contador Responsável (com CRC)</span>
+          </label>
+        </div>
+
+        <!-- Parecer e Observações Personalizadas -->
+        <div class="form-group">
+          <label class="form-label">Parecer Técnico / Observações Personalizadas (Opcional)</label>
+          <textarea
+            [(ngModel)]="observacaoPersonalizada"
+            rows="3"
+            class="form-textarea"
+            placeholder="Insira recomendações estratégicas para a diretoria, pró-labore ou planejamento tributário..."
+          ></textarea>
+        </div>
+
+        <!-- Barra de Botões de Ação -->
+        <div class="botoes-acao">
+          <button
+            class="btn btn-primary"
+            (click)="gerarEVisualizarPdf()"
+            [disabled]="gerandoPdf || !empresaSelecionada"
+          >
+            <svg *ngIf="!gerandoPdf" class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span *ngIf="gerandoPdf" class="spinner-inline"></span>
+            <span>{{ gerandoPdf ? 'Processando PDF...' : 'Gerar e Visualizar Laudo PDF' }}</span>
+          </button>
+
+          <button
+            class="btn btn-secondary"
+            (click)="baixarPdfDireto()"
+            [disabled]="gerandoPdf || !empresaSelecionada"
+          >
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            <span>Baixar PDF (.pdf)</span>
+          </button>
+
+          <button
+            class="btn btn-excel"
+            (click)="baixarExcel()"
+            [disabled]="baixandoExcel || !empresaSelecionada"
+          >
+            <svg *ngIf="!baixandoExcel" class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <path d="M8 13h8M8 17h8M10 9h4"/>
+            </svg>
+            <span *ngIf="baixandoExcel" class="spinner-inline"></span>
+            <span>{{ baixandoExcel ? 'Gerando XLSX...' : 'Baixar Planilha Excel (.xlsx)' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Pré-visualização Inline em PDF -->
+      <div class="card-painel preview-painel">
+        <div class="preview-header">
+          <h3 class="card-title">
+            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Pré-Visualização do Laudo Digital
+          </h3>
+
+          <div class="preview-acoes" *ngIf="pdfPreviewUrl">
+            <button class="btn-fechar" (click)="fecharPreviewPdf()" title="Fechar visualização">
+              &times;
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="!pdfPreviewUrl && !gerandoPdf" class="preview-empty">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <path d="M9 15h6M9 11h6"/>
+            </svg>
+          </div>
+          <h4>Nenhum laudo em exibição</h4>
+          <p>Configure os parâmetros ao lado e clique em <strong>"Gerar e Visualizar Laudo PDF"</strong> para inspecionar o documento timbrado com memória de cálculo e parecer.</p>
+        </div>
+
+        <div *ngIf="gerandoPdf" class="preview-loading">
+          <div class="spinner"></div>
+          <p>Compilando documento fiscal, calculando hash SHA-256 e renderizando PDF com OpenPDF...</p>
+        </div>
+
+        <div *ngIf="pdfPreviewUrl" class="iframe-wrapper">
+          <iframe [src]="pdfPreviewUrl" title="Pré-visualização do Laudo PDF"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- ABA 2: HISTÓRICO DE LAUDOS                                     -->
+  <!-- ============================================================== -->
+  <div *ngIf="abaAtiva === 'historico'" class="tab-content">
+    <div class="card-painel">
+      <div class="historico-header">
+        <div>
+          <h3 class="card-title">Laudos Emitidos e Registrados em Base Fiscal</h3>
+          <p class="subtitle">Registros auditáveis com chaves criptográficas SHA-256 e data de emissão</p>
+        </div>
+        <button class="btn btn-secondary" (click)="carregarHistorico()" [disabled]="carregandoHistorico">
+          <svg class="icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Atualizar Lista
+        </button>
+      </div>
+
+      <div *ngIf="carregandoHistorico" class="loading-state">
+        <div class="spinner"></div>
+        <p>Carregando histórico...</p>
+      </div>
+
+      <div *ngIf="!carregandoHistorico && historicoLaudos.length === 0" class="empty-historico">
+        <p>Nenhum laudo fiscal gerado anteriormente para esta empresa.</p>
+      </div>
+
+      <div *ngIf="!carregandoHistorico && historicoLaudos.length > 0" class="tabela-wrapper">
+        <table class="tabela-laudos">
+          <thead>
+            <tr>
+              <th>Data de Emissão</th>
+              <th>Competência</th>
+              <th>Tipo de Laudo</th>
+              <th>Hash SHA-256 de Autenticidade</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let laudo of historicoLaudos">
+              <td>{{ laudo.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td><span class="badge badge-comp">{{ laudo.competencia }}</span></td>
+              <td><span class="badge badge-tipo">{{ laudo.tipoLaudo }}</span></td>
+              <td class="hash-col">
+                <code class="hash-code" [title]="laudo.hashAutenticidade">{{ laudo.hashAutenticidade }}</code>
+              </td>
+              <td class="acoes-col">
+                <button
+                  class="btn-icon"
+                  title="Copiar Hash e Validar"
+                  (click)="copiarHashParaValidacao(laudo.hashAutenticidade)"
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <polyline points="9 12 11 14 15 10"/>
+                  </svg>
+                </button>
+                <button
+                  class="btn-icon btn-download"
+                  title="Baixar Laudo PDF"
+                  (click)="baixarDoHistorico(laudo)"
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- ABA 3: AUDITORIA FISCAL & VALIDAÇÃO POR HASH SHA-256           -->
+  <!-- ============================================================== -->
+  <div *ngIf="abaAtiva === 'validacao'" class="tab-content">
+    <div class="card-painel validacao-painel">
+      <div class="validacao-header">
+        <div class="shield-icon">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#38bdf8" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <polyline points="9 12 11 14 15 10"/>
+          </svg>
+        </div>
+        <div>
+          <h3>Verificação Pública de Autenticidade Documental</h3>
+          <p class="subtitle">Audite a conformidade de qualquer laudo tributário emitido informando sua chave hash criptográfica SHA-256 (64 dígitos hexadecimais).</p>
+        </div>
+      </div>
+
+      <div class="consulta-form">
+        <div class="input-grupo">
+          <input
+            type="text"
+            [(ngModel)]="hashConsulta"
+            class="form-input hash-input"
+            placeholder="Cole aqui a chave Hash SHA-256 (Ex: E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855)..."
+            (keyup.enter)="validarHashAutenticidade()"
+          />
+          <button
+            class="btn btn-primary"
+            (click)="validarHashAutenticidade()"
+            [disabled]="validandoHash || !hashConsulta.trim()"
+          >
+            <span *ngIf="validandoHash" class="spinner-inline"></span>
+            <span>{{ validandoHash ? 'Consultando...' : 'Verificar Autenticidade' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Resultado da Validação -->
+      <div *ngIf="consultaRealizada && resultadoValidacao" class="resultado-validacao">
+        <!-- VÁLIDO -->
+        <div *ngIf="resultadoValidacao.valido" class="validacao-card valido">
+          <div class="resultado-status">
+            <div class="status-badge status-valido">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>DOCUMENTO AUTÊNTICO E AUDITADO</span>
+            </div>
+            <span class="data-emissao">Emitido em: {{ resultadoValidacao.dataEmissao }}</span>
+          </div>
+
+          <div class="detalhes-grid">
+            <div class="detalhe-item">
+              <span class="detalhe-label">Empresa Cliente:</span>
+              <span class="detalhe-valor">{{ resultadoValidacao.empresaNome }}</span>
+            </div>
+            <div class="detalhe-item">
+              <span class="detalhe-label">CNPJ:</span>
+              <span class="detalhe-valor">{{ resultadoValidacao.empresaCnpj }}</span>
+            </div>
+            <div class="detalhe-item">
+              <span class="detalhe-label">Contador Responsável:</span>
+              <span class="detalhe-valor">{{ resultadoValidacao.contadorResponsavel }}</span>
+            </div>
+            <div class="detalhe-item">
+              <span class="detalhe-label">CRC do Contador:</span>
+              <span class="detalhe-valor">{{ resultadoValidacao.crcContador }}</span>
+            </div>
+            <div class="detalhe-item">
+              <span class="detalhe-label">Competência Auditada:</span>
+              <span class="detalhe-valor">{{ resultadoValidacao.competencia }}</span>
+            </div>
+            <div class="detalhe-item">
+              <span class="detalhe-label">Enquadramento Tributário:</span>
+              <span class="detalhe-valor destaque-anexo">{{ resultadoValidacao.anexoEnquadrado }}</span>
+            </div>
+            <div class="detalhe-item">
+              <span class="detalhe-label">Fator R Apurado:</span>
+              <span class="detalhe-valor destaque-fator">{{ resultadoValidacao.percentualFatorR }}%</span>
+            </div>
+            <div class="detalhe-item hash-item">
+              <span class="detalhe-label">Chave Hash SHA-256 Confirmada:</span>
+              <code class="detalhe-code">{{ resultadoValidacao.hashAutenticidade }}</code>
+            </div>
+          </div>
+        </div>
+
+        <!-- INVÁLIDO -->
+        <div *ngIf="!resultadoValidacao.valido" class="validacao-card invalido">
+          <div class="resultado-status">
+            <div class="status-badge status-invalido">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+              <span>DOCUMENTO NÃO LOCALIZADO OU ADULTERADO</span>
+            </div>
+          </div>
+          <p class="invalido-msg">
+            A chave hash informada não corresponde a nenhum laudo tributário emitido ou registrado na base do Sistema Fator R.
+            Verifique se os 64 caracteres foram digitados corretamente sem espaços adicionais.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

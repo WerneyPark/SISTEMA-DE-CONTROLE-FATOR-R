@@ -1,0 +1,335 @@
+<div class="receber-container">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Financeiro & Recebíveis</p>
+      <h2>Contas a Receber <span *ngIf="empresaRazaoSocial" class="empresa-tag">· {{ empresaRazaoSocial }}</span></h2>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="abrirModalXml()">
+        <span class="icon">📄</span> Importar XML NF-e
+      </button>
+      <button class="btn btn-primary" (click)="abrirModalCriacao()">
+        <span class="icon">+</span> Nova Conta
+      </button>
+    </div>
+  </div>
+
+  <!-- Alertas de Feedback -->
+  <div *ngIf="!empresaId" class="alerta alerta-aviso">
+    Selecione uma empresa ativa no cabeçalho para gerenciar as contas a receber.
+  </div>
+  <div *ngIf="erro" class="alerta alerta-erro">
+    <span>{{ erro }}</span>
+    <button class="btn-fechar" (click)="erro = ''">&times;</button>
+  </div>
+  <div *ngIf="sucesso" class="alerta alerta-sucesso">
+    <span>{{ sucesso }}</span>
+    <button class="btn-fechar" (click)="sucesso = ''">&times;</button>
+  </div>
+
+  <!-- Barra de Filtros -->
+  <div class="filter-bar" *ngIf="empresaId">
+    <div class="filter-item">
+      <label>Status</label>
+      <select [(ngModel)]="status" (change)="aplicarFiltros()">
+        <option value="">Todos os status</option>
+        <option value="PENDENTE">Pendente</option>
+        <option value="PAGO">Pago</option>
+        <option value="CANCELADO">Cancelado</option>
+      </select>
+    </div>
+
+    <div class="filter-item" *ngIf="clientes.length > 0">
+      <label>Cliente</label>
+      <select [(ngModel)]="clienteId" (change)="aplicarFiltros()">
+        <option value="">Todos os clientes</option>
+        <option *ngFor="let c of clientes" [value]="c.id">{{ c.nome }}</option>
+      </select>
+    </div>
+
+    <div class="filter-item">
+      <label>Vencimento De</label>
+      <input type="date" [(ngModel)]="inicio" (change)="aplicarFiltros()" />
+    </div>
+
+    <div class="filter-item">
+      <label>Até</label>
+      <input type="date" [(ngModel)]="fim" (change)="aplicarFiltros()" />
+    </div>
+
+    <div class="filter-actions">
+      <button class="btn btn-secondary btn-sm" (click)="limparFiltros()">Limpar</button>
+      <button class="btn btn-primary btn-sm" (click)="aplicarFiltros()">Filtrar</button>
+    </div>
+  </div>
+
+  <!-- Estado de Carregamento -->
+  <div *ngIf="loading" class="loading-state">
+    <p>Carregando contas a receber...</p>
+  </div>
+
+  <!-- Tabela de Contas a Receber -->
+  <div *ngIf="!loading && empresaId" class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Documento</th>
+            <th>Cliente / Tomador</th>
+            <th>Origem</th>
+            <th>Emissão</th>
+            <th>Vencimento</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th class="th-actions">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let conta of contas">
+            <td class="font-mono">
+              <strong>{{ conta.numeroDocumento || '-' }}</strong>
+              <div *ngIf="conta.xmlChaveAcesso" class="chave-nfe-preview" [title]="conta.xmlChaveAcesso">
+                NF-e: {{ conta.xmlChaveAcesso.substring(0, 15) }}...
+              </div>
+            </td>
+            <td>
+              <span class="cliente-nome">{{ obterNomeCliente(conta.clienteId) }}</span>
+            </td>
+            <td>
+              <span class="badge-origem" [class.xml]="conta.origem === 'IMPORTACAO_XML'">
+                {{ conta.origem === 'IMPORTACAO_XML' ? 'XML NF-e' : 'Manual' }}
+              </span>
+            </td>
+            <td>{{ conta.dataEmissao | date:'dd/MM/yyyy' }}</td>
+            <td>
+              <span [class.text-vencido]="conta.status === 'PENDENTE' && conta.dataVencimento < inicio">
+                {{ conta.dataVencimento | date:'dd/MM/yyyy' }}
+              </span>
+            </td>
+            <td class="font-bold valor-col">{{ conta.valorTotal | currency:'BRL' }}</td>
+            <td>
+              <span class="status-badge"
+                    [class.status-pendente]="conta.status === 'PENDENTE'"
+                    [class.status-pago]="conta.status === 'PAGO'"
+                    [class.status-cancelado]="conta.status === 'CANCELADO'">
+                {{ conta.status }}
+              </span>
+              <div *ngIf="conta.dataPagamento" class="sub-data">
+                Pgto: {{ conta.dataPagamento | date:'dd/MM/yyyy' }}
+              </div>
+            </td>
+            <td class="td-actions">
+              <button
+                *ngIf="conta.status === 'PENDENTE'"
+                class="btn btn-success btn-xs"
+                (click)="baixarConta(conta)"
+                title="Efetuar baixa manual como PAGO">
+                Baixar
+              </button>
+              <button
+                *ngIf="conta.status === 'PENDENTE'"
+                class="btn btn-danger btn-xs"
+                (click)="cancelarConta(conta)"
+                title="Cancelar este título">
+                Cancelar
+              </button>
+              <span *ngIf="conta.status !== 'PENDENTE'" class="text-muted">-</span>
+            </td>
+          </tr>
+          <tr *ngIf="contas.length === 0">
+            <td colspan="8" class="empty-state">
+              <p>Nenhuma conta a receber encontrada para os filtros selecionados.</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginação -->
+    <div class="pagination-footer" *ngIf="totalElementos > 0">
+      <span class="page-info">
+        Página {{ pagina + 1 }} de {{ totalPaginas || 1 }} (Total: {{ totalElementos }} títulos)
+      </span>
+      <div class="pagination-buttons">
+        <button class="btn btn-secondary btn-sm" [disabled]="pagina === 0" (click)="paginaAnterior()">
+          &larr; Anterior
+        </button>
+        <button class="btn btn-secondary btn-sm" [disabled]="pagina + 1 >= totalPaginas" (click)="proximaPagina()">
+          Próxima &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NOVA CONTA MANUAL -->
+  <div class="modal-overlay" *ngIf="mostrarModalCriacao" (click)="fecharModalCriacao()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nova Conta a Receber</h3>
+        <button class="modal-close" (click)="fecharModalCriacao()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Cliente / Tomador *</label>
+          <div *ngIf="clientes.length > 0">
+            <select [(ngModel)]="novaConta.clienteId">
+              <option value="" disabled>Selecione um cliente...</option>
+              <option *ngFor="let c of clientes" [value]="c.id">{{ c.nome }} ({{ c.cnpjCpf }})</option>
+            </select>
+          </div>
+          <div *ngIf="clientes.length === 0">
+            <input type="text" [(ngModel)]="novaConta.clienteId" placeholder="ID ou nome do cliente" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Número do Documento</label>
+          <input type="text" [(ngModel)]="novaConta.numeroDocumento" placeholder="Ex: NF-1024 / CTR-2026" />
+        </div>
+
+        <div class="form-group">
+          <label>Valor Total (R$) *</label>
+          <input type="number" step="0.01" min="0.01" [(ngModel)]="novaConta.valorTotal" placeholder="0,00" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Data de Emissão *</label>
+            <input type="date" [(ngModel)]="novaConta.dataEmissao" />
+          </div>
+          <div class="form-group">
+            <label>Data de Vencimento *</label>
+            <input type="date" [(ngModel)]="novaConta.dataVencimento" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="fecharModalCriacao()">Cancelar</button>
+        <button class="btn btn-primary" (click)="salvarConta()">Salvar Conta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD E PREVIEW XML NF-e -->
+  <div class="modal-overlay" *ngIf="mostrarModalXml" (click)="fecharModalXml()">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Importar Nota Fiscal XML</h3>
+        <button class="modal-close" (click)="fecharModalXml()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-desc">
+          Faça o upload do XML da NF-e ou NFS-e. O sistema validará se a empresa emissora é a empresa ativa,
+          cadastrará o tomador automaticamente e extrairá todas as parcelas de cobrança.
+        </p>
+
+        <!-- Seletor de Arquivo -->
+        <div class="upload-area">
+          <input
+            type="file"
+            id="xmlFileInput"
+            accept=".xml,text/xml"
+            (change)="selecionarArquivoXml($event)"
+            hidden
+          />
+          <label for="xmlFileInput" class="upload-label">
+            <span class="upload-icon">📂</span>
+            <span *ngIf="!arquivoXml">Clique para selecionar o arquivo XML da NF-e</span>
+            <span *ngIf="arquivoXml" class="upload-selected">Arquivo: <strong>{{ arquivoXml.name }}</strong></span>
+          </label>
+        </div>
+
+        <!-- Alerta de Erro de Preview/Importação -->
+        <div *ngIf="erroPreview" class="alerta alerta-erro" style="margin-top: 14px;">
+          {{ erroPreview }}
+        </div>
+
+        <!-- Indicador de Carregamento do Preview -->
+        <div *ngIf="carregandoPreview" class="loading-state">
+          <p>Analisando XML da nota fiscal...</p>
+        </div>
+
+        <!-- Painel de Pré-visualização -->
+        <div *ngIf="previewDados && !carregandoPreview" class="preview-panel">
+          <div class="preview-header">
+            <h4>Pré-visualização dos Dados Fiscais</h4>
+            <span class="tag-status-preview">XML Válido</span>
+          </div>
+
+          <div class="preview-grid">
+            <div class="preview-item">
+              <span class="label">Emitente:</span>
+              <span class="val"><strong>{{ previewDados.nomeEmitente || 'Razão Social não inf.' }}</strong> (CNPJ: {{ previewDados.cnpjEmitente }})</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Tomador / Cliente:</span>
+              <span class="val"><strong>{{ previewDados.nomeTomador || 'Nome não informado' }}</strong> (CNPJ/CPF: {{ previewDados.cnpjTomador }})</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Número da Nota:</span>
+              <span class="val">{{ previewDados.numeroDocumento || 'Sem número' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Valor Total:</span>
+              <span class="val font-bold valor-destaque">{{ previewDados.valorTotal | currency:'BRL' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Data de Emissão:</span>
+              <span class="val">{{ previewDados.dataEmissao | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Data de Vencimento:</span>
+              <span class="val">{{ previewDados.dataVencimento | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="preview-item full-width" *ngIf="previewDados.chaveAcesso">
+              <span class="label">Chave de Acesso:</span>
+              <span class="val font-mono">{{ previewDados.chaveAcesso }}</span>
+            </div>
+          </div>
+
+          <!-- Parcelas da Nota -->
+          <div *ngIf="previewDados.parcelas && previewDados.parcelas.length > 0" class="parcelas-preview">
+            <h5>Parcelas a Gerar ({{ previewDados.parcelas.length }})</h5>
+            <table class="sub-table">
+              <thead>
+                <tr>
+                  <th>Parcela</th>
+                  <th>Vencimento</th>
+                  <th>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let p of previewDados.parcelas">
+                  <td>{{ p.numero }}</td>
+                  <td>{{ p.dataVencimento | date:'dd/MM/yyyy' }}</td>
+                  <td>{{ p.valor | currency:'BRL' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Checkbox de integração com FaturamentoMensal -->
+          <div class="checkbox-group">
+            <label>
+              <input type="checkbox" [(ngModel)]="atualizarFaturamento" />
+              Atualizar/alimentar o Faturamento Mensal desta competência ({{ previewDados.dataEmissao | date:'MM/yyyy' }})
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="fecharModalXml()" [disabled]="importandoXml">
+          Cancelar
+        </button>
+        <button
+          class="btn btn-primary"
+          [disabled]="!previewDados || importandoXml"
+          (click)="confirmarImportacaoXml()">
+          {{ importandoXml ? 'Importando...' : 'Confirmar Importação' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

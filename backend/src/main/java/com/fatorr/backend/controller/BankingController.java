@@ -30,6 +30,8 @@ public class BankingController {
             return ResponseEntity.ok(resultado);
         } catch (IOException e) {
             return ResponseEntity.badRequest().body(Map.of("erro", "Falha ao ler arquivo OFX: " + e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
         }
     }
 
@@ -41,6 +43,8 @@ public class BankingController {
             return ResponseEntity.ok(resultado);
         } catch (IOException e) {
             return ResponseEntity.badRequest().body(Map.of("erro", "Falha ao ler arquivo CSV: " + e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
         }
     }
 
@@ -55,13 +59,18 @@ public class BankingController {
     }
 
     @PostMapping("/conciliar")
-    public ResponseEntity<?> conciliar(@RequestParam String usuarioId,
-                                        @RequestBody ConciliarRequest request) {
+    public ResponseEntity<?> conciliar(
+            @RequestParam(value = "usuarioId", required = false) String usuarioIdParam,
+            @RequestBody ConciliarRequest request) {
         try {
+            String usuarioFinal = (usuarioIdParam != null && !usuarioIdParam.isBlank())
+                    ? usuarioIdParam
+                    : (request.usuarioId() != null && !request.usuarioId().isBlank() ? request.usuarioId() : "SISTEMA");
+
             ConciliacaoBancaria resultado = bankingService.conciliar(
                     request.extratoLancamentoId(),
                     request.contaReceberId(),
-                    usuarioId,
+                    usuarioFinal,
                     request.observacao()
             );
             return ResponseEntity.ok(resultado);
@@ -70,5 +79,30 @@ public class BankingController {
         }
     }
 
-    public record ConciliarRequest(String extratoLancamentoId, String contaReceberId, String observacao) {}
+    @GetMapping("/conciliacoes/{empresaId}")
+    public ResponseEntity<List<BankingService.ConciliacaoDetalhadaDTO>> listarConciliacoes(@PathVariable String empresaId) {
+        List<BankingService.ConciliacaoDetalhadaDTO> historico = bankingService.listarConciliacoes(empresaId);
+        return ResponseEntity.ok(historico);
+    }
+
+    @DeleteMapping("/conciliacoes/{id}")
+    public ResponseEntity<?> desconciliar(@PathVariable String id) {
+        try {
+            bankingService.desconciliar(id);
+            return ResponseEntity.ok(Map.of("mensagem", "Desconciliação realizada com sucesso", "id", id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
+    }
+
+    public record ConciliarRequest(
+            String extratoLancamentoId,
+            String contaReceberId,
+            String observacao,
+            String usuarioId
+    ) {
+        public ConciliarRequest(String extratoLancamentoId, String contaReceberId, String observacao) {
+            this(extratoLancamentoId, contaReceberId, observacao, null);
+        }
+    }
 }
