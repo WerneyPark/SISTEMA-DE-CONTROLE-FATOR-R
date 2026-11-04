@@ -87,6 +87,13 @@ public class ContaReceberController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/cancelar-nf")
+    public ResponseEntity<ContaReceber> cancelarNf(
+            @PathVariable String id,
+            @RequestParam String empresaId) {
+        return ResponseEntity.ok(service.cancelarNf(empresaId, id));
+    }
+
     @PostMapping("/preview-xml")
     public ResponseEntity<LeitorXmlNfeService.DadosNotaFiscal> previewXml(
             @RequestParam String empresaId,

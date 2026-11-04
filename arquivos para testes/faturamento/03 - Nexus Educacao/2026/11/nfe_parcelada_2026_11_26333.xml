@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35261128146124000107550010000263331002633399">
+      <ide>
+        <nNF>26333</nNF>
+        <dhEmi>2026-11-15T09:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>28146124000107</CNPJ>
+        <xNome>Nexus Treinamentos e Consultoria Empresarial Ltda</xNome>
+        <xFant>Nexus Educação Corporativa</xFant>
+      </emit>
+      <dest>
+        <CNPJ>00000000000191</CNPJ>
+        <xNome>Banco do Brasil SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>12500.00</vNF>
+        </ICMSTot>
+      </total>
+      <cobr>
+        <dup>
+          <nDup>1</nDup>
+          <dVenc>2026-11-25</dVenc>
+          <vDup>6250.00</vDup>
+        </dup>
+        <dup>
+          <nDup>2</nDup>
+          <dVenc>2026-12-25</dVenc>
+          <vDup>6250.00</vDup>
+        </dup>
+      </cobr>
+    </infNFe>
+  </NFe>
+</nfeProc>

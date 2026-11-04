@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35250128146243000151550010000250331002503399">
+      <ide>
+        <nNF>25033</nNF>
+        <dhEmi>2025-01-15T09:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>28146243000151</CNPJ>
+        <xNome>Clínica Veterinária e Diagnóstico AnimaVita Ltda</xNome>
+        <xFant>Centro Veterinário AnimaVita</xFant>
+      </emit>
+      <dest>
+        <CNPJ>47960950000121</CNPJ>
+        <xNome>Magazine Luiza SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>7916.67</vNF>
+        </ICMSTot>
+      </total>
+      <cobr>
+        <dup>
+          <nDup>1</nDup>
+          <dVenc>2025-01-25</dVenc>
+          <vDup>3958.34</vDup>
+        </dup>
+        <dup>
+          <nDup>2</nDup>
+          <dVenc>2025-02-25</dVenc>
+          <vDup>3958.33</vDup>
+        </dup>
+      </cobr>
+    </infNFe>
+  </NFe>
+</nfeProc>

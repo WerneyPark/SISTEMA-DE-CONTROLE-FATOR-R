@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35250728146107000161550010000252131002521399">
+      <ide>
+        <nNF>25213</nNF>
+        <dhEmi>2025-07-15T09:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>28146107000161</CNPJ>
+        <xNome>Clínica Médica e Fisioterapia Ortovita Ltda</xNome>
+        <xFant>Clínica Ortovita</xFant>
+      </emit>
+      <dest>
+        <CNPJ>47960950000121</CNPJ>
+        <xNome>Magazine Luiza SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>15000.00</vNF>
+        </ICMSTot>
+      </total>
+      <cobr>
+        <dup>
+          <nDup>1</nDup>
+          <dVenc>2025-07-25</dVenc>
+          <vDup>7500.00</vDup>
+        </dup>
+        <dup>
+          <nDup>2</nDup>
+          <dVenc>2025-08-25</dVenc>
+          <vDup>7500.00</vDup>
+        </dup>
+      </cobr>
+    </infNFe>
+  </NFe>
+</nfeProc>

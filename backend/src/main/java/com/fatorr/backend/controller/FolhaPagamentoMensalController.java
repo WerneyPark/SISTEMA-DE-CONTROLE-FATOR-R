@@ -20,10 +20,14 @@ public class FolhaPagamentoMensalController {
 
     private final FolhaPagamentoMensalRepository folhaRepository;
     private final EmpresaRepository empresaRepository;
+    private final com.fatorr.backend.service.CalculoFatorRService calculoFatorRService;
 
     @PostMapping
     @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<FolhaPagamentoMensal> criar(@RequestBody FolhaPagamentoMensalDTO dto) {
+        if (calculoFatorRService.isCompetenciaEncerrada(dto.getEmpresaId(), dto.getCompetencia())) {
+            throw new IllegalStateException("A competência " + dto.getCompetencia() + " já está encerrada. Reabra o período no Simulador do Fator R.");
+        }
         Empresa empresa = empresaRepository.findById(dto.getEmpresaId())
                 .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
 
@@ -49,8 +53,12 @@ public class FolhaPagamentoMensalController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
-        if (folhaRepository.existsById(id)) {
-            folhaRepository.deleteById(id);
+        FolhaPagamentoMensal folha = folhaRepository.findById(id).orElse(null);
+        if (folha != null) {
+            if (calculoFatorRService.isCompetenciaEncerrada(folha.getEmpresa().getId(), folha.getCompetencia())) {
+                throw new IllegalStateException("A competência " + folha.getCompetencia() + " já está encerrada. Reabra o período no Simulador do Fator R.");
+            }
+            folhaRepository.delete(folha);
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();

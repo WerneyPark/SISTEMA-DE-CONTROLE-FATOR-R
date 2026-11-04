@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35260228146243000151550010000260631002606399">
+      <ide>
+        <nNF>26063</nNF>
+        <dhEmi>2026-02-15T09:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>28146243000151</CNPJ>
+        <xNome>Clínica Veterinária e Diagnóstico AnimaVita Ltda</xNome>
+        <xFant>Centro Veterinário AnimaVita</xFant>
+      </emit>
+      <dest>
+        <CNPJ>56994962000146</CNPJ>
+        <xNome>Ambev SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>7916.67</vNF>
+        </ICMSTot>
+      </total>
+      <cobr>
+        <dup>
+          <nDup>1</nDup>
+          <dVenc>2026-02-25</dVenc>
+          <vDup>3958.34</vDup>
+        </dup>
+        <dup>
+          <nDup>2</nDup>
+          <dVenc>2026-03-25</dVenc>
+          <vDup>3958.33</vDup>
+        </dup>
+      </cobr>
+    </infNFe>
+  </NFe>
+</nfeProc>

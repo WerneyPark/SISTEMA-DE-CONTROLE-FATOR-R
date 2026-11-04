@@ -46,6 +46,31 @@
     </button>
   </div>
 
+  <!-- Barra de Filtro de Período Mensal -->
+  <div class="periodo-bar">
+    <div class="filtro-periodo-item">
+      <label for="filtro-mes">Filtrar por Mês / Competência:</label>
+      <input
+        id="filtro-mes"
+        type="month"
+        [(ngModel)]="competenciaFiltro"
+        (change)="onCompetenciaChange()"
+        class="input-periodo"
+      />
+    </div>
+    <button
+      *ngIf="competenciaFiltro"
+      class="btn-limpar-periodo"
+      (click)="limparFiltroCompetencia()"
+      title="Limpar filtro de mês"
+    >
+      ✕ Limpar Filtro
+    </button>
+    <span *ngIf="competenciaFiltro" class="periodo-ativo-tag">
+      Filtrando competência: {{ competenciaFiltro }}
+    </span>
+  </div>
+
   <!-- Mensagens de Alerta -->
   <div *ngIf="mensagemErro" class="alerta alerta-erro">
     <span>{{ mensagemErro }}</span>
@@ -103,6 +128,17 @@
             <span *ngIf="!isMatchComSelecionado(lancamento) && temSugestaoLancamento(lancamento)" class="badge-sugestao">
               💡 Sugestão: Valor correspondente em aberto
             </span>
+          </div>
+
+          <div class="item-acoes-linha">
+            <button
+              type="button"
+              class="btn-excluir-lancamento"
+              (click)="excluirLancamento(lancamento, $event)"
+              title="Excluir lançamento do extrato"
+            >
+              🗑️ Excluir
+            </button>
           </div>
         </div>
       </div>

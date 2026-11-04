@@ -1,4 +1,4 @@
-export type StatusContaReceber = 'PENDENTE' | 'PAGO' | 'CANCELADO' | 'VENCIDO';
+export type StatusContaReceber = 'PENDENTE' | 'PAGO' | 'CANCELADO' | 'VENCIDO' | 'NF_CANCELADA';
 export type OrigemContaReceber = 'MANUAL' | 'IMPORTACAO_XML';
 export type TipoClienteFornecedor = 'CLIENTE' | 'FORNECEDOR' | 'AMBOS';
 

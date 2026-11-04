@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35250698765000102000550010000251821002518299">
+    <nNFSe>25182</nNFSe>
+    <emit>
+      <CNPJ>98XYZ765000102</CNPJ>
+      <xNome>Empresa Beta Tecnologia</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2025-06-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2025-06-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>00000000000191</CNPJ>
+          <xNome>Banco do Brasil SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>17500.00</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

@@ -1,32 +1,309 @@
-<div class="home-container">
-  <div class="welcome-section">
-    <h1>Bem-vindo ao Fator R</h1>
-    <p>Selecione uma ferramenta abaixo para começar ou troque de empresa no menu superior.</p>
+<div class="dashboard-container">
+  <!-- BANNER EXECUTIVO DE BOAS-VINDAS -->
+  <div class="executive-banner glass-panel">
+    <div class="banner-content">
+      <div class="banner-badge">
+        <span class="badge-dot"></span>
+        <span>Visão Consolidada · {{ competenciaAtualTexto }}</span>
+      </div>
+      <h2>Olá, {{ usuarioNome }} 👋</h2>
+      <p class="banner-subtitle" *ngIf="empresaSelecionada">
+        Acompanhe a saúde tributária, o indicador do Fator R e os fluxos financeiros da empresa
+        <strong class="highlight-empresa">{{ empresaSelecionada.razaoSocial }}</strong>.
+      </p>
+      <p class="banner-subtitle" *ngIf="!empresaSelecionada">
+        Selecione uma empresa no topo da página para carregar os indicadores tributários e financeiros em tempo real.
+      </p>
+    </div>
+
+    <div class="banner-actions">
+      <a routerLink="/simulador" class="btn-glass-primary">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3v18h18"></path>
+          <path d="M7 16l4-4 4 4 5-5"></path>
+        </svg>
+        Simulador Fator R
+      </a>
+      <a routerLink="/reports" class="btn-glass-secondary">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        Emitir Laudo PDF
+      </a>
+    </div>
   </div>
 
-  <div class="cards-grid">
-    <a routerLink="/simulador" class="tool-card">
-      <div class="card-icon blue-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 5-5"/></svg>
-      </div>
-      <h3>Simulador Fator R</h3>
-      <p>Lance faturamentos, folhas de pagamento e simule o enquadramento tributário do mês.</p>
-    </a>
+  <!-- AVISO QUANDO NENHUMA EMPRESA ESTÁ SELECIONADA -->
+  <div class="empty-empresa-alert glass-panel" *ngIf="!empresaSelecionada">
+    <div class="empty-icon-box">🏢</div>
+    <div class="empty-text-box">
+      <h3>Nenhuma Empresa Selecionada</h3>
+      <p>Para visualizar as métricas tributárias, conciliações e recebíveis, selecione ou cadastre uma empresa.</p>
+    </div>
+    <a routerLink="/empresas" class="btn-glass-primary">Gerenciar Empresas</a>
+  </div>
 
-    <a routerLink="/empresas" class="tool-card">
-      <div class="card-icon green-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v14M21 7v14M8 21v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4M12 7V3M10 5h4"/></svg>
+  <!-- 4 CARDS DE KPIS EXECUTIVOS (QUANDO EMPRESA SELECIONADA) -->
+  <div class="kpi-grid" *ngIf="empresaSelecionada">
+    <!-- KPI 1: Fator R -->
+    <div class="kpi-card glass-panel glass-panel-hover">
+      <div class="kpi-header">
+        <span class="kpi-title">Fator R Atual</span>
+        <span class="badge-anexo" [class.anexo-3]="simulacao?.anexoAplicavel === 'Anexo III'" [class.anexo-5]="simulacao?.anexoAplicavel === 'Anexo V'">
+          {{ simulacao?.anexoAplicavel || 'Sem Dados' }}
+        </span>
       </div>
-      <h3>Cadastro de Empresas</h3>
-      <p>Gerencie as empresas ativas, adicione novas empresas e configure quem tem acesso.</p>
-    </a>
+      <div class="kpi-value-row">
+        <span class="kpi-big-value" [class.val-emerald]="(simulacao?.percentualFatorR || 0) >= 28" [class.val-rose]="(simulacao?.percentualFatorR || 0) < 28">
+          {{ (simulacao?.percentualFatorR || 0) | number:'1.2-2' }}%
+        </span>
+        <span class="kpi-meta-badge">Meta: ≥ 28%</span>
+      </div>
+      <div class="kpi-progress-bar">
+        <div class="progress-fill" [style.width.%]="getProgressoMetaFatorR()" [class.fill-emerald]="(simulacao?.percentualFatorR || 0) >= 28"></div>
+      </div>
+      <div class="kpi-footer-text">
+        <span *ngIf="(simulacao?.percentualFatorR || 0) >= 28">✓ Enquadrado com Alíquota Reduzida</span>
+        <span *ngIf="(simulacao?.percentualFatorR || 0) < 28" class="text-warning">⚠ Abaixo do Limite de 28%</span>
+      </div>
+    </div>
 
-    <a *ngIf="isAdmin" routerLink="/parametros" class="tool-card admin-card">
-      <div class="card-icon purple-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <!-- KPI 2: Economia Estimada -->
+    <div class="kpi-card glass-panel glass-panel-hover">
+      <div class="kpi-header">
+        <span class="kpi-title">Economia Mensal</span>
+        <span class="badge-regime">Melhor: {{ simulacao?.regimeMaisVantajoso || 'Simples' }}</span>
       </div>
-      <h3>Parâmetros Tributários</h3>
-      <p>Gerencie as faixas, limites e alíquotas do Simples Nacional em tempo real.</p>
-    </a>
+      <div class="kpi-value-row">
+        <span class="kpi-big-value val-cyan">
+          {{ formatCurrency(simulacao?.economiaEstimada) }}
+        </span>
+        <span class="kpi-periodo">/mês</span>
+      </div>
+      <div class="kpi-footer-details">
+        <span>Simples: <strong>{{ formatCurrency(simulacao?.valorEstimadoSimplesNacional) }}</strong></span>
+        <span>Presumido: <strong>{{ formatCurrency(simulacao?.valorEstimadoLucroPresumido) }}</strong></span>
+      </div>
+    </div>
+
+    <!-- KPI 3: Contas a Receber -->
+    <div class="kpi-card glass-panel glass-panel-hover">
+      <div class="kpi-header">
+        <span class="kpi-title">Contas a Receber</span>
+        <span class="badge-count">{{ totalContasPendentes }} pendentes</span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-big-value val-amber">
+          {{ formatCurrency(valorTotalContasPendentes) }}
+        </span>
+      </div>
+      <div class="kpi-footer-action">
+        <a routerLink="/contas-a-receber" class="link-kpi">Acessar Recebíveis →</a>
+      </div>
+    </div>
+
+    <!-- KPI 4: Conciliação & Laudos -->
+    <div class="kpi-card glass-panel glass-panel-hover">
+      <div class="kpi-header">
+        <span class="kpi-title">Conciliação & Auditoria</span>
+        <span class="badge-conciliacao">Status OK</span>
+      </div>
+      <div class="kpi-split-stat">
+        <div class="stat-unit">
+          <span class="stat-num">{{ totalLancamentosPendentes }}</span>
+          <span class="stat-lbl">Extratos Pendentes</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-unit">
+          <span class="stat-num">{{ totalLaudosEmitidos }}</span>
+          <span class="stat-lbl">Laudos Emitidos</span>
+        </div>
+      </div>
+      <div class="kpi-footer-action">
+        <a routerLink="/banking" class="link-kpi">Conciliar Lançamentos →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAINEL DUPLO: DETALHES TRIBUTÁRIOS & RECEBÍVEIS RECENTES -->
+  <div class="dashboard-split-grid" *ngIf="empresaSelecionada && simulacao">
+    <!-- Coluna 1: Diagnóstico Tributário 12 Meses -->
+    <div class="glass-panel analytics-panel">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <div class="panel-icon-circle blue-glow">📊</div>
+          <div>
+            <h3>Janela Deslizante (Últimos 12 Meses)</h3>
+            <span class="panel-subtitle">Base de cálculo da Receita Bruta Total (RBT12) e Folha</span>
+          </div>
+        </div>
+        <a routerLink="/simulador" class="btn-panel-action">Ver Histórico Completo</a>
+      </div>
+
+      <div class="financial-summary-row">
+        <div class="fin-card">
+          <span class="fin-label">Receita Acumulada (RBT12)</span>
+          <span class="fin-val">{{ formatCurrency(simulacao.totalFaturamento12Meses) }}</span>
+        </div>
+        <div class="fin-card">
+          <span class="fin-label">Folha de Pagamento 12M</span>
+          <span class="fin-val text-cyan">{{ formatCurrency(simulacao.totalFolha12Meses) }}</span>
+        </div>
+        <div class="fin-card">
+          <span class="fin-label">Alíquota Efetiva</span>
+          <span class="fin-val text-emerald">{{ simulacao.aliquotaEfetivaSimplesNacional | number:'1.2-2' }}%</span>
+        </div>
+      </div>
+
+      <div class="diagnostic-alert" *ngIf="simulacao.alertaProximidadeLimite">
+        <span class="alert-icon">⚡</span>
+        <span class="alert-text">{{ simulacao.mensagemAlerta }}</span>
+      </div>
+      <p class="diagnostic-msg">{{ simulacao.mensagem }}</p>
+    </div>
+
+    <!-- Coluna 2: Próximos Vencimentos de Contas a Receber -->
+    <div class="glass-panel table-panel">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <div class="panel-icon-circle amber-glow">💰</div>
+          <div>
+            <h3>Próximos Títulos a Receber</h3>
+            <span class="panel-subtitle">Títulos com vencimento em aberto</span>
+          </div>
+        </div>
+        <a routerLink="/contas-a-receber" class="btn-panel-action">+ Novo / Importar</a>
+      </div>
+
+      <div class="mini-table-container">
+        <table class="mini-table" *ngIf="contasRecentes.length > 0">
+          <thead>
+            <tr>
+              <th>Documento</th>
+              <th>Vencimento</th>
+              <th>Valor</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of contasRecentes">
+              <td class="font-bold">{{ c.numeroDocumento || 'Título #' + (c.id | slice:0:6) }}</td>
+              <td>{{ c.dataVencimento | date:'dd/MM/yyyy' }}</td>
+              <td class="val-table-bold">{{ formatCurrency(c.valorTotal) }}</td>
+              <td>
+                <span class="mini-status-badge">{{ c.status }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="empty-mini-table" *ngIf="contasRecentes.length === 0">
+          <p>Nenhuma conta a receber pendente registrada para esta empresa.</p>
+          <a routerLink="/contas-a-receber" class="link-mini">Registrar Conta ou Importar XML →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRADE COMPLETA DE MÓDULOS (HUB DE FERRAMENTAS) -->
+  <div class="modules-hub-section">
+    <div class="section-header">
+      <h3>Módulos e Recursos do Sistema</h3>
+      <p>Acesse diretamente qualquer fluxo operacional ou gerencial</p>
+    </div>
+
+    <div class="modules-grid">
+      <a routerLink="/simulador" class="module-card glass-panel glass-panel-hover">
+        <div class="mod-icon mod-blue">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3v18h18"></path><path d="M7 16l4-4 4 4 5-5"></path>
+          </svg>
+        </div>
+        <h4>Simulador Fator R</h4>
+        <p>Apuração da razão de 28%, comparativo com Lucro Presumido e projeções para os próximos 2 meses.</p>
+        <span class="mod-arrow">Acessar →</span>
+      </a>
+
+      <a routerLink="/payroll" class="module-card glass-panel glass-panel-hover">
+        <div class="mod-icon mod-cyan">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
+        <h4>Folha de Pagamento & eSocial</h4>
+        <p>Importador XML (S-1200/S-1210), relatórios de ERPs e Simulador de Pró-Labore ideal.</p>
+        <span class="mod-arrow">Acessar →</span>
+      </a>
+
+      <a routerLink="/contas-a-receber" class="module-card glass-panel glass-panel-hover">
+        <div class="mod-icon mod-emerald">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+        </div>
+        <h4>Contas a Receber & NF-e</h4>
+        <p>Importação em lote de notas fiscais XML com auto-cadastro de tomadores e baixa de títulos.</p>
+        <span class="mod-arrow">Acessar →</span>
+      </a>
+
+      <a routerLink="/banking" class="module-card glass-panel glass-panel-hover">
+        <div class="mod-icon mod-pink">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <h4>Conciliação Bancária</h4>
+        <p>Importação de extratos OFX e CSV com sugestões de combinação inteligente e histórico.</p>
+        <span class="mod-arrow">Acessar →</span>
+      </a>
+
+      <a routerLink="/reports" class="module-card glass-panel glass-panel-hover">
+        <div class="mod-icon mod-amber">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+        </div>
+        <h4>Dossiês & Laudos Fiscais</h4>
+        <p>Geração de laudos timbrados em PDF com CRC, planilhas Excel e auditoria com Hash SHA-256.</p>
+        <span class="mod-arrow">Acessar →</span>
+      </a>
+
+      <a routerLink="/empresas" class="module-card glass-panel glass-panel-hover">
+        <div class="mod-icon mod-purple">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 21h18M3 7v14M21 7v14M8 21v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4M12 7V3M10 5h4"></path>
+          </svg>
+        </div>
+        <h4>Cadastro de Empresas</h4>
+        <p>Gerencie as empresas ativas, abertura proporcional e controle de permissões de acesso.</p>
+        <span class="mod-arrow">Acessar →</span>
+      </a>
+
+      <a routerLink="/parametros" class="module-card glass-panel glass-panel-hover">
+        <div class="mod-icon mod-indigo">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </div>
+        <h4>Parâmetros Tributários</h4>
+        <p>Configuração das faixas nominais do Anexo III e V e alíquotas do Lucro Presumido.</p>
+        <span class="mod-arrow">Acessar →</span>
+      </a>
+
+      <a *ngIf="isAdmin" routerLink="/usuarios-admin" class="module-card glass-panel glass-panel-hover">
+        <div class="mod-icon mod-red">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+        </div>
+        <h4>Usuários & Vínculos</h4>
+        <p>Pré-cadastro por CPF, aprovação de solicitações de vínculos e governança de acessos.</p>
+        <span class="mod-arrow">Acessar →</span>
+      </a>
+    </div>
   </div>
 </div>

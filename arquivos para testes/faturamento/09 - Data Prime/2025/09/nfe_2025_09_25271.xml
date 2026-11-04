@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35250928146226000114550010000252711002527199">
+      <ide>
+        <nNF>25271</nNF>
+        <dhEmi>2025-09-05T10:00:00-03:00</dhEmi>
+        <dVenc>2025-09-10</dVenc>
+      </ide>
+      <emit>
+        <CNPJ>28146226000114</CNPJ>
+        <xNome>Data Prime Ciência de Dados e IA Ltda</xNome>
+        <xFant>Data Prime Analytics</xFant>
+      </emit>
+      <dest>
+        <CNPJ>47960950000121</CNPJ>
+        <xNome>Magazine Luiza SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>40000.00</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>

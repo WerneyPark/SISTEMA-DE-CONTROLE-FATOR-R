@@ -175,6 +175,114 @@ public class LeitorXmlNfeServiceTest {
         assertFalse(preview.parcelas().isEmpty());
     }
 
+    @Test
+    void deveLerNfsePadraoNacionalCompleta() {
+        String xml = """
+                <NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+                  <infNFSe Id="NFSe31062001100005392612628000000000000019010153978386">
+                    <nNFSe>456</nNFSe>
+                    <cVerif>AB12-CD34</cVerif>
+                    <emit>
+                      <CNPJ>12345678000199</CNPJ>
+                      <xNome>Prestador Nacional SA</xNome>
+                    </emit>
+                    <DPS>
+                      <infDPS>
+                        <ide>
+                          <dhEmi>2026-05-20T10:00:00-03:00</dhEmi>
+                        </ide>
+                        <toma>
+                          <CNPJ>98765432000110</CNPJ>
+                          <xNome>Tomador Nacional Ltda</xNome>
+                        </toma>
+                        <valores>
+                          <vServPrest>
+                            <vServ>2500.00</vServ>
+                          </vServPrest>
+                        </valores>
+                      </infDPS>
+                    </DPS>
+                  </infNFSe>
+                </NFSe>
+                """;
+
+        LeitorXmlNfeService.DadosNotaFiscal nota = service.lerXmlNfe(stream(xml));
+
+        assertEquals("31062001100005392612628000000000000019010153978386", nota.chaveAcesso());
+        assertEquals("12345678000199", nota.cnpjEmitente());
+        assertEquals("Prestador Nacional SA", nota.nomeEmitente());
+        assertEquals("98765432000110", nota.cnpjTomador());
+        assertEquals("Tomador Nacional Ltda", nota.nomeTomador());
+        assertEquals("2500.00", nota.valorTotal().toPlainString());
+        assertEquals("2026-05-20", nota.dataEmissao().toString());
+        assertEquals("456", nota.numeroDocumento());
+        assertEquals(1, nota.parcelas().size());
+        assertEquals("2500.00", nota.parcelas().get(0).valor().toPlainString());
+    }
+
+    @Test
+    void deveLerNfsePadraoNacionalApenasComBlocoPrest() {
+        String xml = """
+                <NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+                  <infNFSe Id="ID31062000000000000000000000000000000000000000000001">
+                    <nNFSe>999</nNFSe>
+                    <DPS>
+                      <infDPS>
+                        <ide>
+                          <dhEmi>2026-06-15T09:00:00-03:00</dhEmi>
+                        </ide>
+                        <prest>
+                          <CNPJ>12345678000199</CNPJ>
+                          <xNome>Prestador Apenas Prest</xNome>
+                        </prest>
+                        <toma>
+                          <CNPJ>98765432000110</CNPJ>
+                          <razaoSocial>Tomador Razao Social</razaoSocial>
+                        </toma>
+                        <valores>
+                          <vServPrest>
+                            <vServ>1800.50</vServ>
+                          </vServPrest>
+                        </valores>
+                      </infDPS>
+                    </DPS>
+                  </infNFSe>
+                </NFSe>
+                """;
+
+        LeitorXmlNfeService.DadosNotaFiscal nota = service.lerXmlNfe(stream(xml));
+
+        assertEquals("31062000000000000000000000000000000000000000000001", nota.chaveAcesso());
+        assertEquals("12345678000199", nota.cnpjEmitente());
+        assertEquals("Prestador Apenas Prest", nota.nomeEmitente());
+        assertEquals("98765432000110", nota.cnpjTomador());
+        assertEquals("Tomador Razao Social", nota.nomeTomador());
+        assertEquals("1800.50", nota.valorTotal().toPlainString());
+        assertEquals("2026-06-15", nota.dataEmissao().toString());
+        assertEquals("999", nota.numeroDocumento());
+        assertEquals(1, nota.parcelas().size());
+        assertEquals("1800.50", nota.parcelas().get(0).valor().toPlainString());
+    }
+
+    @Test
+    void deveLerArquivosGeradosParaTestes() throws Exception {
+        java.io.File pastaFat = new java.io.File("../arquivos para testes/faturamento/01 - Inovar Softwares/2026/05");
+        if (pastaFat.exists()) {
+            java.io.File[] files = pastaFat.listFiles((dir, name) -> name.endsWith(".xml"));
+            assertNotNull(files);
+            for (java.io.File f : files) {
+                try (java.io.InputStream is = new java.io.FileInputStream(f)) {
+                    LeitorXmlNfeService.DadosNotaFiscal nota = service.lerXmlNfe(is);
+                    assertNotNull(nota.cnpjEmitente());
+                    assertNotNull(nota.cnpjTomador());
+                    assertNotNull(nota.valorTotal());
+                    assertNotNull(nota.dataEmissao());
+                    assertFalse(nota.parcelas().isEmpty());
+                }
+            }
+        }
+    }
+
     private ByteArrayInputStream stream(String xml) {
         return new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8));
     }

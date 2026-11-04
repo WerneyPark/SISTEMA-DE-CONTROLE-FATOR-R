@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35250328146158000193550010000250921002509299">
+    <nNFSe>25092</nNFSe>
+    <emit>
+      <CNPJ>28146158000193</CNPJ>
+      <xNome>Vertex Agência de Marketing Digital & Estratégia Ltda</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2025-03-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2025-03-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>56994962000146</CNPJ>
+          <xNome>Ambev SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>8750.00</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

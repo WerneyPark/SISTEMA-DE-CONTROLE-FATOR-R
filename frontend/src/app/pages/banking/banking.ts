@@ -23,6 +23,9 @@ export class BankingComponent implements OnInit, OnDestroy {
 
   abaAtiva: 'pendentes' | 'historico' = 'pendentes';
 
+  // Filtro de período mensal
+  competenciaFiltro = '';
+
   loading = true;
   loadingHistorico = false;
   importando = false;
@@ -87,7 +90,9 @@ export class BankingComponent implements OnInit, OnDestroy {
     this.lancamentoSelecionado = null;
     this.contaSelecionada = null;
 
-    this.bankingService.listarLancamentosPendentes(this.empresaId).subscribe({
+    const comp = this.competenciaFiltro || undefined;
+
+    this.bankingService.listarLancamentosPendentes(this.empresaId, comp).subscribe({
       next: (dados) => {
         this.lancamentos = dados;
         this.carregarContas();
@@ -103,7 +108,8 @@ export class BankingComponent implements OnInit, OnDestroy {
 
   private carregarContas() {
     if (!this.empresaId) return;
-    this.bankingService.listarContasPendentes(this.empresaId).subscribe({
+    const comp = this.competenciaFiltro || undefined;
+    this.bankingService.listarContasPendentes(this.empresaId, comp).subscribe({
       next: (dados) => {
         this.contas = dados;
         this.loading = false;
@@ -118,7 +124,8 @@ export class BankingComponent implements OnInit, OnDestroy {
   carregarHistorico() {
     if (!this.empresaId) return;
     this.loadingHistorico = true;
-    this.bankingService.listarConciliacoes(this.empresaId).subscribe({
+    const comp = this.competenciaFiltro || undefined;
+    this.bankingService.listarConciliacoes(this.empresaId, comp).subscribe({
       next: (dados) => {
         this.historico = dados;
         this.loadingHistorico = false;
@@ -126,6 +133,34 @@ export class BankingComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Erro ao carregar histórico de conciliações', err);
         this.loadingHistorico = false;
+      }
+    });
+  }
+
+  onCompetenciaChange() {
+    this.carregarDados();
+  }
+
+  limparFiltroCompetencia() {
+    this.competenciaFiltro = '';
+    this.carregarDados();
+  }
+
+  excluirLancamento(lancamento: ExtratoLancamentoDTO, event: Event) {
+    event.stopPropagation();
+    if (!this.empresaId) return;
+    if (!confirm(`Deseja realmente excluir o lançamento "${lancamento.descricao}" no valor de ${this.formatarValor(lancamento.valor)}?`)) {
+      return;
+    }
+
+    this.bankingService.excluirLancamentoExtrato(this.empresaId, lancamento.id).subscribe({
+      next: () => {
+        this.mensagemSucesso = 'Lançamento do extrato excluído com sucesso!';
+        this.mensagemErro = '';
+        this.carregarDados();
+      },
+      error: (err) => {
+        this.mensagemErro = err?.error?.erro || 'Erro ao excluir lançamento do extrato.';
       }
     });
   }

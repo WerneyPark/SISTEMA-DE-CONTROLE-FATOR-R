@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35260628146107000161550010000261821002618299">
+    <nNFSe>26182</nNFSe>
+    <emit>
+      <CNPJ>28146107000161</CNPJ>
+      <xNome>Clínica Médica e Fisioterapia Ortovita Ltda</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2026-06-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2026-06-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>00000000000191</CNPJ>
+          <xNome>Banco do Brasil SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>21000.00</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

@@ -16,4 +16,12 @@ public class FaturamentoHistoricoDTO {
     private YearMonth competencia;
     private BigDecimal faturamento;
     private BigDecimal folhaPagamento;
+    private boolean encerrado;
+
+    public FaturamentoHistoricoDTO(YearMonth competencia, BigDecimal faturamento, BigDecimal folhaPagamento) {
+        this.competencia = competencia;
+        this.faturamento = faturamento;
+        this.folhaPagamento = folhaPagamento;
+        this.encerrado = false;
+    }
 }

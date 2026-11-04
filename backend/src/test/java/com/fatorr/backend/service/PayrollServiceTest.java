@@ -8,6 +8,7 @@ import com.fatorr.backend.domain.ParametroTributario;
 import com.fatorr.backend.dto.ImportFolhaResponseDTO;
 import com.fatorr.backend.dto.ProLaboreIdealDTO;
 import com.fatorr.backend.repository.EmpresaRepository;
+import com.fatorr.backend.repository.EncerramentoCompetenciaRepository;
 import com.fatorr.backend.repository.FaturamentoMensalRepository;
 import com.fatorr.backend.repository.FolhaDetalhadaRepository;
 import com.fatorr.backend.repository.FolhaPagamentoMensalRepository;
@@ -54,6 +55,9 @@ class PayrollServiceTest {
 
     @Mock
     private ParametroTributarioRepository parametroRepository;
+
+    @Mock
+    private EncerramentoCompetenciaRepository encerramentoRepository;
 
     @InjectMocks
     private PayrollService payrollService;
@@ -305,5 +309,34 @@ class PayrollServiceTest {
         assertEquals(0, new BigDecimal("680.00").compareTo(resultado.getValorFgts()));
         assertEquals(0, new BigDecimal("15480.00").compareTo(resultado.getValorTotalFolha()));
         assertEquals("IMPORTACAO_CSV", resultado.getOrigem());
+    }
+
+    @Test
+    void deveImportarArquivosGeradosDeFolhaComSucesso() throws Exception {
+        java.io.File esocialFile = new java.io.File("../arquivos para testes/folha de pagamento/01 - Inovar Softwares/2026/05/esocial_s1200_2026_05.xml");
+        java.io.File csvFile = new java.io.File("../arquivos para testes/folha de pagamento/01 - Inovar Softwares/2026/05/folha_2026_05.csv");
+
+        if (esocialFile.exists() && csvFile.exists()) {
+            when(tenantResolverService.resolveEmpresa(empresaUuid)).thenReturn(empresaMock);
+            when(folhaDetalhadaRepository.findByEmpresaIdAndCompetencia(eq(empresaUuid), anyString()))
+                    .thenReturn(Optional.empty());
+            when(folhaDetalhadaRepository.save(any(FolhaDetalhada.class))).thenAnswer(i -> i.getArgument(0));
+
+            // Testa eSocial
+            byte[] esocialBytes = java.nio.file.Files.readAllBytes(esocialFile.toPath());
+            MockMultipartFile mfEsocial = new MockMultipartFile("file", "esocial.xml", "application/xml", esocialBytes);
+            ImportFolhaResponseDTO respEsocial = payrollService.importarEsocialXml(mfEsocial, empresaUuid);
+            assertNotNull(respEsocial);
+            assertTrue(respEsocial.isSucesso());
+            assertEquals("2026-05", respEsocial.getCompetencia());
+
+            // Testa CSV
+            byte[] csvBytes = java.nio.file.Files.readAllBytes(csvFile.toPath());
+            MockMultipartFile mfCsv = new MockMultipartFile("file", "folha.csv", "text/csv", csvBytes);
+            ImportFolhaResponseDTO respCsv = payrollService.importarCsvOuExcel(mfCsv, empresaUuid);
+            assertNotNull(respCsv);
+            assertTrue(respCsv.isSucesso());
+            assertEquals("2026-05", respCsv.getCompetencia());
+        }
     }
 }

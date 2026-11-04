@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35250228146158000193550010000250611002506199">
+      <ide>
+        <nNF>25061</nNF>
+        <dhEmi>2025-02-05T10:00:00-03:00</dhEmi>
+        <dVenc>2025-02-10</dVenc>
+      </ide>
+      <emit>
+        <CNPJ>28146158000193</CNPJ>
+        <xNome>Vertex Agência de Marketing Digital & Estratégia Ltda</xNome>
+        <xFant>Vertex Digital Agency</xFant>
+      </emit>
+      <dest>
+        <CNPJ>33000167000101</CNPJ>
+        <xNome>Petrobras Petroleo Brasileiro SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>10000.00</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>

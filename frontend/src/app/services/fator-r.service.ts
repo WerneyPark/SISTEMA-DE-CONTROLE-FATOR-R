@@ -37,6 +37,18 @@ export class FatorRService {
     );
   }
 
+  encerrarCompetencia(empresaId: number, competencia: string): Observable<{ mensagem: string }> {
+    return this.http.post<{ mensagem: string }>(`${this.empresasUrl}/${empresaId}/competencias/${competencia}/encerrar`, {});
+  }
+
+  reabrirCompetencia(empresaId: number, competencia: string): Observable<{ mensagem: string }> {
+    return this.http.post<{ mensagem: string }>(`${this.empresasUrl}/${empresaId}/competencias/${competencia}/reabrir`, {});
+  }
+
+  salvarDadosSimulacao(empresaId: number, dto: { competencia: string; valorFaturamento?: number; valorFolha?: number }): Observable<{ mensagem: string }> {
+    return this.http.post<{ mensagem: string }>(`${this.empresasUrl}/${empresaId}/dados-simulacao`, dto);
+  }
+
   // Faturamentos
   listarFaturamentos(empresaId: number): Observable<FaturamentoMensal[]> {
     return this.http.get<FaturamentoMensal[]>(`${this.faturamentosUrl}/empresa/${empresaId}`);

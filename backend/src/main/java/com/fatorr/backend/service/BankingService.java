@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -297,39 +298,86 @@ public class BankingService {
         conciliacaoBancariaRepository.delete(conciliacao);
     }
 
-    // ===================== CONSULTAS =====================
+    // ===================== CONSULTAS E EXCLUSÃO =====================
+
+    @Transactional
+    public void excluirLancamentoExtrato(String empresaId, String lancamentoId) {
+        ExtratoLancamento lancamento = extratoLancamentoRepository.findById(lancamentoId)
+                .orElseThrow(() -> new IllegalArgumentException("Lançamento de extrato não encontrado: " + lancamentoId));
+
+        List<String> idsEmpresa = resolverIdentificadoresEmpresa(empresaId);
+        if (!idsEmpresa.contains(lancamento.getEmpresaId())) {
+            throw new IllegalArgumentException("O lançamento não pertence à empresa ativa.");
+        }
+
+        if ("CONCILIADO".equalsIgnoreCase(lancamento.getStatusConciliacao())) {
+            throw new IllegalStateException("Não é possível excluir um lançamento que já está conciliado. Desfaça a conciliação primeiro.");
+        }
+
+        extratoLancamentoRepository.delete(lancamento);
+    }
 
     public List<ExtratoLancamento> listarLancamentosPendentes(String empresaId) {
+        return listarLancamentosPendentes(empresaId, null);
+    }
+
+    public List<ExtratoLancamento> listarLancamentosPendentes(String empresaId, String competencia) {
         List<String> ids = resolverIdentificadoresEmpresa(empresaId);
         Map<String, ExtratoLancamento> mapa = new LinkedHashMap<>();
+        YearMonth ym = (competencia != null && !competencia.isBlank()) ? YearMonth.parse(competencia) : null;
+
         for (String id : ids) {
             List<ExtratoLancamento> lista = extratoLancamentoRepository.findByEmpresaIdAndStatusConciliacao(id, "PENDENTE");
             for (ExtratoLancamento l : lista) {
-                mapa.putIfAbsent(l.getId(), l);
+                if (ym == null || (l.getDataLancamento() != null && YearMonth.from(l.getDataLancamento()).equals(ym))) {
+                    mapa.putIfAbsent(l.getId(), l);
+                }
             }
         }
         return new ArrayList<>(mapa.values());
     }
 
     public List<ContaReceber> listarContasPendentes(String empresaId) {
+        return listarContasPendentes(empresaId, null);
+    }
+
+    public List<ContaReceber> listarContasPendentes(String empresaId, String competencia) {
         List<String> ids = resolverIdentificadoresEmpresa(empresaId);
         Map<String, ContaReceber> mapa = new LinkedHashMap<>();
+        YearMonth ym = (competencia != null && !competencia.isBlank()) ? YearMonth.parse(competencia) : null;
+
         for (String id : ids) {
             List<ContaReceber> lista = contaReceberRepository.findByEmpresaIdAndStatus(id, "PENDENTE");
             for (ContaReceber c : lista) {
-                mapa.putIfAbsent(c.getId(), c);
+                if (ym == null) {
+                    mapa.putIfAbsent(c.getId(), c);
+                } else {
+                    boolean venceNoMes = c.getDataVencimento() != null && YearMonth.from(c.getDataVencimento()).equals(ym);
+                    boolean emitiuNoMes = c.getDataEmissao() != null && YearMonth.from(c.getDataEmissao()).equals(ym);
+                    if (venceNoMes || emitiuNoMes) {
+                        mapa.putIfAbsent(c.getId(), c);
+                    }
+                }
             }
         }
         return new ArrayList<>(mapa.values());
     }
 
     public List<ConciliacaoDetalhadaDTO> listarConciliacoes(String empresaId) {
+        return listarConciliacoes(empresaId, null);
+    }
+
+    public List<ConciliacaoDetalhadaDTO> listarConciliacoes(String empresaId, String competencia) {
         List<String> ids = resolverIdentificadoresEmpresa(empresaId);
         Map<String, ConciliacaoDetalhadaDTO> mapa = new LinkedHashMap<>();
+        YearMonth ym = (competencia != null && !competencia.isBlank()) ? YearMonth.parse(competencia) : null;
 
         for (String id : ids) {
             List<ExtratoLancamento> extratos = extratoLancamentoRepository.findByEmpresaIdAndStatusConciliacao(id, "CONCILIADO");
             for (ExtratoLancamento ext : extratos) {
+                if (ym != null && ext.getDataLancamento() != null && !YearMonth.from(ext.getDataLancamento()).equals(ym)) {
+                    continue;
+                }
                 Optional<ConciliacaoBancaria> opt = conciliacaoBancariaRepository.findByExtratoLancamentoId(ext.getId());
                 if (opt.isPresent()) {
                     ConciliacaoBancaria conc = opt.get();

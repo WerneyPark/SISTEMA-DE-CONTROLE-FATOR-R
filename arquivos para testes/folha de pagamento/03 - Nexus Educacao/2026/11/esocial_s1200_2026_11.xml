@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<eSocial xmlns="http://www.esocial.gov.br/schema/evt/evtRemun/v_S_01_02_00">
+  <evtRemun Id="ID128146124000107202611010001">
+    <ideEvento>
+      <perApur>2026-11</perApur>
+    </ideEvento>
+    <ideEmpregador>
+      <tpInsc>1</tpInsc>
+      <nrInsc>28146124000107</nrInsc>
+    </ideEmpregador>
+    <ideTrabalhador>
+      <cpfTrab>21543945660</cpfTrab>
+      <dmDev>
+        <codCateg>721</codCateg>
+        <infoPerApur>
+          <itensRemun>
+            <codRubr>3501</codRubr>
+            <natRubr>3501</natRubr>
+            <dscRubr>Retirada de Pro-Labore</dscRubr>
+            <vrRubr>4200.00</vrRubr>
+          </itensRemun>
+        </infoPerApur>
+      </dmDev>
+    </ideTrabalhador>
+    <ideTrabalhador>
+      <cpfTrab>21544058608</cpfTrab>
+      <dmDev>
+        <codCateg>101</codCateg>
+        <infoPerApur>
+          <itensRemun>
+            <codRubr>1000</codRubr>
+            <natRubr>1000</natRubr>
+            <dscRubr>Salario Base CLT</dscRubr>
+            <vrRubr>5100.00</vrRubr>
+          </itensRemun>
+        </infoPerApur>
+      </dmDev>
+    </ideTrabalhador>
+    <infoTotal>
+      <vrCp>400.00</vrCp>
+      <vrFgts>300.00</vrFgts>
+    </infoTotal>
+  </evtRemun>
+</eSocial>

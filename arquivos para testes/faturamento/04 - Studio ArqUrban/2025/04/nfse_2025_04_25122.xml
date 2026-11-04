@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35250428146141000136550010000251221002512299">
+    <nNFSe>25122</nNFSe>
+    <emit>
+      <CNPJ>28146141000136</CNPJ>
+      <xNome>Studio ArqUrban Arquitetura e Engenharia Ltda</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2025-04-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2025-04-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>33592510000154</CNPJ>
+          <xNome>Vale SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>10500.00</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

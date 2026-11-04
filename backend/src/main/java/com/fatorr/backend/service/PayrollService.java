@@ -1,5 +1,6 @@
 package com.fatorr.backend.service;
 
+import com.fatorr.backend.domain.EncerramentoCompetencia;
 import com.fatorr.backend.domain.Empresa;
 import com.fatorr.backend.domain.FaixaTributaria;
 import com.fatorr.backend.domain.FaturamentoMensal;
@@ -9,6 +10,7 @@ import com.fatorr.backend.domain.ParametroTributario;
 import com.fatorr.backend.dto.ImportFolhaResponseDTO;
 import com.fatorr.backend.dto.ProLaboreIdealDTO;
 import com.fatorr.backend.repository.EmpresaRepository;
+import com.fatorr.backend.repository.EncerramentoCompetenciaRepository;
 import com.fatorr.backend.repository.FaturamentoMensalRepository;
 import com.fatorr.backend.repository.FolhaDetalhadaRepository;
 import com.fatorr.backend.repository.FolhaPagamentoMensalRepository;
@@ -53,6 +55,7 @@ public class PayrollService {
     private final EmpresaRepository empresaRepository;
     private final TenantResolverService tenantResolverService;
     private final ParametroTributarioRepository parametroRepository;
+    private final EncerramentoCompetenciaRepository encerramentoRepository;
 
     // Constantes Previdenciárias e Fator R (Teto 2026)
     private static final BigDecimal FATOR_R_ALVO = new BigDecimal("0.28");
@@ -113,6 +116,12 @@ public class PayrollService {
         Empresa empresa = tenantResolverService.resolveEmpresa(folha.getEmpresaId());
         String canonicalUuid = empresa.getUuidId() != null ? empresa.getUuidId() : String.valueOf(empresa.getId());
         String compNormalizada = normalizarCompetencia(folha.getCompetencia());
+        YearMonth ymComp = YearMonth.parse(compNormalizada);
+
+        if (encerramentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), ymComp)
+                .map(EncerramentoCompetencia::isEncerrado).orElse(false)) {
+            throw new IllegalStateException("A competência " + compNormalizada + " já está encerrada. Reabra o período no Simulador do Fator R.");
+        }
 
         folha.setEmpresaId(canonicalUuid);
         folha.setCompetencia(compNormalizada);
@@ -173,9 +182,13 @@ public class PayrollService {
         Optional<FolhaDetalhada> opt = folhaDetalhadaRepository.findById(id);
         if (opt.isPresent()) {
             FolhaDetalhada f = opt.get();
+            Empresa empresa = tenantResolverService.resolveEmpresa(f.getEmpresaId());
+            YearMonth ym = YearMonth.parse(f.getCompetencia());
+            if (encerramentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), ym)
+                    .map(EncerramentoCompetencia::isEncerrado).orElse(false)) {
+                throw new IllegalStateException("A competência " + f.getCompetencia() + " já está encerrada. Reabra o período no Simulador do Fator R.");
+            }
             try {
-                Empresa empresa = tenantResolverService.resolveEmpresa(f.getEmpresaId());
-                YearMonth ym = YearMonth.parse(f.getCompetencia());
                 List<FolhaPagamentoMensal> existentes = folhaPagamentoMensalRepository.findByEmpresaIdAndCompetencia(empresa.getId(), ym);
                 if (!existentes.isEmpty()) {
                     folhaPagamentoMensalRepository.deleteAll(existentes);

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35261228146158000193550010000263611002636199">
+      <ide>
+        <nNF>26361</nNF>
+        <dhEmi>2026-12-05T10:00:00-03:00</dhEmi>
+        <dVenc>2026-12-10</dVenc>
+      </ide>
+      <emit>
+        <CNPJ>28146158000193</CNPJ>
+        <xNome>Vertex Agência de Marketing Digital & Estratégia Ltda</xNome>
+        <xFant>Vertex Digital Agency</xFant>
+      </emit>
+      <dest>
+        <CNPJ>06057223000171</CNPJ>
+        <xNome>Sendas Distribuidora SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>10000.00</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>

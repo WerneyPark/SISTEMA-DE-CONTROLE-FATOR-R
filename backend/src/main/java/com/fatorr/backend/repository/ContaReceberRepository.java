@@ -66,4 +66,7 @@ public interface ContaReceberRepository extends JpaRepository<ContaReceber, Stri
             Collection<String> empresaIds, String status, String clienteId, LocalDate inicio, LocalDate fim, Pageable pageable);
 
     Optional<ContaReceber> findByEmpresaIdInAndXmlChaveAcesso(Collection<String> empresaIds, String xmlChaveAcesso);
+
+    List<ContaReceber> findByEmpresaIdInAndDataEmissaoBetween(
+            Collection<String> empresaIds, LocalDate inicio, LocalDate fim);
 }

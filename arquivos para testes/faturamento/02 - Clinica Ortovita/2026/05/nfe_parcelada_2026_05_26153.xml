@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35260528146107000161550010000261531002615399">
+      <ide>
+        <nNF>26153</nNF>
+        <dhEmi>2026-05-15T09:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>28146107000161</CNPJ>
+        <xNome>Clínica Médica e Fisioterapia Ortovita Ltda</xNome>
+        <xFant>Clínica Ortovita</xFant>
+      </emit>
+      <dest>
+        <CNPJ>00000000000191</CNPJ>
+        <xNome>Banco do Brasil SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>15000.00</vNF>
+        </ICMSTot>
+      </total>
+      <cobr>
+        <dup>
+          <nDup>1</nDup>
+          <dVenc>2026-05-25</dVenc>
+          <vDup>7500.00</vDup>
+        </dup>
+        <dup>
+          <nDup>2</nDup>
+          <dVenc>2026-06-25</dVenc>
+          <vDup>7500.00</vDup>
+        </dup>
+      </cobr>
+    </infNFe>
+  </NFe>
+</nfeProc>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35251228146243000151550010000253621002536299">
+    <nNFSe>25362</nNFSe>
+    <emit>
+      <CNPJ>28146243000151</CNPJ>
+      <xNome>Clínica Veterinária e Diagnóstico AnimaVita Ltda</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2025-12-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2025-12-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>00000000000191</CNPJ>
+          <xNome>Banco do Brasil SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>11083.33</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

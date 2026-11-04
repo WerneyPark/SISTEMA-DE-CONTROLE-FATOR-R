@@ -3,9 +3,11 @@ package com.fatorr.backend.service;
 import com.fatorr.backend.domain.ClienteFornecedor;
 import com.fatorr.backend.domain.ContaReceber;
 import com.fatorr.backend.domain.Empresa;
+import com.fatorr.backend.domain.EncerramentoCompetencia;
 import com.fatorr.backend.domain.FaturamentoMensal;
 import com.fatorr.backend.repository.ClienteFornecedorRepository;
 import com.fatorr.backend.repository.ContaReceberRepository;
+import com.fatorr.backend.repository.EncerramentoCompetenciaRepository;
 import com.fatorr.backend.repository.FaturamentoMensalRepository;
 import com.fatorr.backend.util.CnpjUtils;
 import lombok.RequiredArgsConstructor;
@@ -31,27 +33,10 @@ public class ContaReceberService {
     private final ClienteFornecedorRepository clienteRepository;
     private final TenantResolverService tenantResolverService;
     private final FaturamentoMensalRepository faturamentoRepository;
+    private final EncerramentoCompetenciaRepository encerramentoRepository;
 
     public ContaReceber criar(ContaReceber conta) {
-        validarConta(conta);
-
-        Empresa empresa = tenantResolverService.resolveEmpresa(conta.getEmpresaId());
-        String canonicalEmpresaId = tenantResolverService.resolveCanonicalUuid(conta.getEmpresaId());
-        conta.setEmpresaId(canonicalEmpresaId);
-
-        if (conta.getId() == null || conta.getId().isBlank()) {
-            conta.setId(UUID.randomUUID().toString());
-        }
-        if (conta.getStatus() == null || conta.getStatus().isBlank()) {
-            conta.setStatus("PENDENTE");
-        }
-        if (conta.getOrigem() == null || conta.getOrigem().isBlank()) {
-            conta.setOrigem("MANUAL");
-        }
-        conta.setCreatedAt(LocalDateTime.now());
-        conta.setUpdatedAt(LocalDateTime.now());
-
-        return repository.save(conta);
+        throw new IllegalStateException("Não é permitido criar contas a receber manualmente. Todo o contas a receber é gerado exclusivamente por importação de XML.");
     }
 
     public LeitorXmlNfeService.DadosNotaFiscal previewXml(
@@ -62,7 +47,32 @@ public class ContaReceberService {
         LeitorXmlNfeService.DadosNotaFiscal nota = leitorXmlNfeService.lerXmlNfe(arquivoXml);
 
         validarEmitente(empresa, nota);
-        return nota;
+
+        boolean encerrado = false;
+        String aviso = null;
+        if (nota.dataEmissao() != null) {
+            YearMonth competencia = YearMonth.from(nota.dataEmissao());
+            encerrado = encerramentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia)
+                    .map(EncerramentoCompetencia::isEncerrado).orElse(false);
+            if (encerrado) {
+                aviso = "Atenção: A data de emissão desta nota fiscal (" + competencia + ") pertence a um período já encerrado. Abra o período no Simulador do Fator R para que o valor seja inserido corretamente.";
+            }
+        }
+
+        return new LeitorXmlNfeService.DadosNotaFiscal(
+                nota.chaveAcesso(),
+                nota.cnpjEmitente(),
+                nota.nomeEmitente(),
+                nota.cnpjTomador(),
+                nota.nomeTomador(),
+                nota.valorTotal(),
+                nota.dataEmissao(),
+                nota.dataVencimento(),
+                nota.numeroDocumento(),
+                nota.parcelas(),
+                encerrado,
+                aviso
+        );
     }
 
     @Transactional
@@ -77,6 +87,15 @@ public class ContaReceberService {
 
         LeitorXmlNfeService.DadosNotaFiscal nota = leitorXmlNfeService.lerXmlNfe(arquivoXml);
         validarEmitente(empresa, nota);
+
+        if (nota.dataEmissao() != null) {
+            YearMonth competencia = YearMonth.from(nota.dataEmissao());
+            boolean encerrado = encerramentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia)
+                    .map(EncerramentoCompetencia::isEncerrado).orElse(false);
+            if (encerrado) {
+                throw new IllegalStateException("A nota fiscal pertence a um período já encerrado (" + competencia + "). Abra o período no Simulador do Fator R para que o valor seja inserido corretamente.");
+            }
+        }
 
         if (nota.chaveAcesso() != null && !nota.chaveAcesso().isBlank()
                 && repository.findByEmpresaIdInAndXmlChaveAcesso(empresaIds, nota.chaveAcesso()).isPresent()) {
@@ -244,6 +263,43 @@ public class ContaReceberService {
         conta.setStatus("CANCELADO");
         conta.setUpdatedAt(LocalDateTime.now());
         repository.save(conta);
+    }
+
+    @Transactional
+    public ContaReceber cancelarNf(String empresaId, String id) {
+        ContaReceber conta = buscarPorId(empresaId, id);
+        if ("PAGO".equals(conta.getStatus())) {
+            throw new IllegalStateException("Não é possível cancelar uma nota fiscal que já possui pagamento registrado.");
+        }
+        if ("NF_CANCELADA".equals(conta.getStatus())) {
+            throw new IllegalStateException("Esta nota fiscal já está cancelada.");
+        }
+
+        Empresa empresa = tenantResolverService.resolveEmpresa(empresaId);
+        if (conta.getDataEmissao() != null) {
+            YearMonth competencia = YearMonth.from(conta.getDataEmissao());
+            boolean encerrado = encerramentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia)
+                    .map(EncerramentoCompetencia::isEncerrado).orElse(false);
+            if (encerrado) {
+                throw new IllegalStateException("Não é possível cancelar uma nota fiscal de um período já encerrado (" + competencia + "). Reabra o período no Simulador do Fator R primeiro.");
+            }
+
+            // Abate do faturamento mensal da competência de emissão
+            List<FaturamentoMensal> existentes = faturamentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia);
+            if (!existentes.isEmpty()) {
+                FaturamentoMensal fat = existentes.get(0);
+                BigDecimal novoValor = fat.getValor().subtract(conta.getValorTotal());
+                if (novoValor.compareTo(BigDecimal.ZERO) < 0) {
+                    novoValor = BigDecimal.ZERO;
+                }
+                fat.setValor(novoValor);
+                faturamentoRepository.save(fat);
+            }
+        }
+
+        conta.setStatus("NF_CANCELADA");
+        conta.setUpdatedAt(LocalDateTime.now());
+        return repository.save(conta);
     }
 
     public ContaReceber baixar(String empresaId, String id) {

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35250528146141000136550010000251531002515399">
+      <ide>
+        <nNF>25153</nNF>
+        <dhEmi>2025-05-15T09:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>28146141000136</CNPJ>
+        <xNome>Studio ArqUrban Arquitetura e Engenharia Ltda</xNome>
+        <xFant>Studio ArqUrban</xFant>
+      </emit>
+      <dest>
+        <CNPJ>00000000000191</CNPJ>
+        <xNome>Banco do Brasil SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>7500.00</vNF>
+        </ICMSTot>
+      </total>
+      <cobr>
+        <dup>
+          <nDup>1</nDup>
+          <dVenc>2025-05-25</dVenc>
+          <vDup>3750.00</vDup>
+        </dup>
+        <dup>
+          <nDup>2</nDup>
+          <dVenc>2025-06-25</dVenc>
+          <vDup>3750.00</vDup>
+        </dup>
+      </cobr>
+    </infNFe>
+  </NFe>
+</nfeProc>

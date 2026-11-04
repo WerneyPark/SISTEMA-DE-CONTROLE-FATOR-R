@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35251028146226000114550010000253021002530299">
+    <nNFSe>25302</nNFSe>
+    <emit>
+      <CNPJ>28146226000114</CNPJ>
+      <xNome>Data Prime Ciência de Dados e IA Ltda</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2025-10-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2025-10-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>33592510000154</CNPJ>
+          <xNome>Vale SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>35000.00</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

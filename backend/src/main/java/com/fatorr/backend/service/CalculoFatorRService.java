@@ -9,17 +9,29 @@ import com.fatorr.backend.dto.FatorRResultadoDTO;
 import com.fatorr.backend.dto.SimulacaoTributariaDTO;
 import com.fatorr.backend.dto.FaturamentoHistoricoDTO;
 import com.fatorr.backend.dto.ProjecaoCenarioDTO;
+import com.fatorr.backend.domain.EncerramentoCompetencia;
+import com.fatorr.backend.domain.ContaReceber;
+import com.fatorr.backend.domain.FolhaDetalhada;
+import com.fatorr.backend.repository.ContaReceberRepository;
+import com.fatorr.backend.repository.EncerramentoCompetenciaRepository;
+import com.fatorr.backend.repository.FolhaDetalhadaRepository;
 import com.fatorr.backend.repository.EmpresaRepository;
 import com.fatorr.backend.repository.FaturamentoMensalRepository;
 import com.fatorr.backend.repository.FolhaPagamentoMensalRepository;
 import com.fatorr.backend.repository.ParametroTributarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +41,9 @@ public class CalculoFatorRService {
     private final FaturamentoMensalRepository faturamentoRepository;
     private final FolhaPagamentoMensalRepository folhaRepository;
     private final ParametroTributarioRepository parametroRepository;
+    private final EncerramentoCompetenciaRepository encerramentoRepository;
+    private final ContaReceberRepository contaReceberRepository;
+    private final FolhaDetalhadaRepository folhaDetalhadaRepository;
 
     // Limites para alerta de proximidade (entre 25% e 31%)
     private static final BigDecimal LIMITE_FATOR_R = new BigDecimal("0.28");
@@ -201,14 +216,20 @@ public class CalculoFatorRService {
                 .reduce(BigDecimal::add)
                 .orElse(BigDecimal.ZERO);
 
+        List<EncerramentoCompetencia> encerramentos = encerramentoRepository.findByEmpresaIdAndEncerradoTrue(empresaId);
+        Set<YearMonth> encerradasSet = encerramentos.stream().map(EncerramentoCompetencia::getCompetencia).collect(Collectors.toSet());
+        List<String> encerradasStr = encerradasSet.stream().map(YearMonth::toString).sorted().collect(Collectors.toList());
+
         List<FaturamentoHistoricoDTO> historico = new java.util.ArrayList<>();
         for (int i = 12; i >= 1; i--) {
             YearMonth mesHist = competenciaReferencia.minusMonths(i);
             BigDecimal fValor = faturamentos.stream().filter(f -> f.getCompetencia().equals(mesHist)).map(FaturamentoMensal::getValor).findFirst().orElse(BigDecimal.ZERO);
             BigDecimal folhaValor = folhas.stream().filter(f -> f.getCompetencia().equals(mesHist)).map(FolhaPagamentoMensal::getValor).findFirst().orElse(BigDecimal.ZERO);
-            historico.add(new FaturamentoHistoricoDTO(mesHist, fValor, folhaValor));
+            boolean isEnc = encerradasSet.contains(mesHist);
+            historico.add(new FaturamentoHistoricoDTO(mesHist, fValor, folhaValor, isEnc));
         }
-        historico.add(new FaturamentoHistoricoDTO(competenciaReferencia, faturamentoMesAtual, folhaMesAtual));
+        boolean refEncerrada = encerradasSet.contains(competenciaReferencia);
+        historico.add(new FaturamentoHistoricoDTO(competenciaReferencia, faturamentoMesAtual, folhaMesAtual, refEncerrada));
 
         BigDecimal valorSN = faturamentoMesAtual.multiply(aliquotaEfetivaSN).setScale(2, RoundingMode.HALF_UP);
         
@@ -264,7 +285,139 @@ public class CalculoFatorRService {
                 .regimeMaisVantajoso(regimeMaisVantajoso)
                 .mensagem(mensagem)
                 .historicoFaturamentos(historico)
+                .competenciaReferenciaEncerrada(refEncerrada)
+                .competenciasEncerradas(encerradasStr)
                 .build();
+    }
+
+    public boolean isCompetenciaEncerrada(Long empresaId, YearMonth competencia) {
+        return encerramentoRepository.findByEmpresaIdAndCompetencia(empresaId, competencia)
+                .map(EncerramentoCompetencia::isEncerrado)
+                .orElse(false);
+    }
+
+    @Transactional
+    public void encerrarCompetencia(Long empresaId, YearMonth competencia) {
+        Empresa empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
+
+        List<String> empresaIds = resolverEmpresaIds(empresa);
+
+        LocalDate inicio = competencia.atDay(1);
+        LocalDate fim = competencia.atEndOfMonth();
+
+        // 1. Apurar faturamento dos XMLs da competência (origem = 'IMPORTACAO_XML' e status != 'NF_CANCELADA')
+        List<ContaReceber> contas = contaReceberRepository.findByEmpresaIdInAndDataEmissaoBetween(empresaIds, inicio, fim);
+        BigDecimal faturamentoApurado = contas.stream()
+                .filter(c -> "IMPORTACAO_XML".equalsIgnoreCase(c.getOrigem()))
+                .filter(c -> !"NF_CANCELADA".equalsIgnoreCase(c.getStatus()))
+                .map(ContaReceber::getValorTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 2. Apurar folha detalhada importada (eSocial ou CSV)
+        String compStr = competencia.toString();
+        BigDecimal folhaApurada = BigDecimal.ZERO;
+        for (String idEmp : empresaIds) {
+            Optional<FolhaDetalhada> folhaOpt = folhaDetalhadaRepository.findByEmpresaIdAndCompetencia(idEmp, compStr);
+            if (folhaOpt.isPresent()) {
+                FolhaDetalhada f = folhaOpt.get();
+                if ("IMPORTACAO_ESOCIAL".equalsIgnoreCase(f.getOrigem()) || "IMPORTACAO_CSV".equalsIgnoreCase(f.getOrigem())) {
+                    folhaApurada = f.getValorTotal() != null ? f.getValorTotal() : BigDecimal.ZERO;
+                    break;
+                }
+            }
+        }
+
+        // 3. Atualizar FaturamentoMensal
+        List<FaturamentoMensal> fatExistentes = faturamentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia);
+        if (!fatExistentes.isEmpty()) {
+            faturamentoRepository.deleteAll(fatExistentes);
+        }
+        FaturamentoMensal fat = new FaturamentoMensal();
+        fat.setEmpresa(empresa);
+        fat.setCompetencia(competencia);
+        fat.setValor(faturamentoApurado);
+        faturamentoRepository.save(fat);
+
+        // 4. Atualizar FolhaPagamentoMensal
+        List<FolhaPagamentoMensal> folhaExistentes = folhaRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia);
+        if (!folhaExistentes.isEmpty()) {
+            folhaRepository.deleteAll(folhaExistentes);
+        }
+        FolhaPagamentoMensal folha = new FolhaPagamentoMensal();
+        folha.setEmpresa(empresa);
+        folha.setCompetencia(competencia);
+        folha.setValor(folhaApurada);
+        folhaRepository.save(folha);
+
+        // 5. Gravar encerramento
+        EncerramentoCompetencia encerramento = encerramentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia)
+                .orElseGet(() -> {
+                    EncerramentoCompetencia ec = new EncerramentoCompetencia();
+                    ec.setEmpresa(empresa);
+                    ec.setCompetencia(competencia);
+                    return ec;
+                });
+        encerramento.setEncerrado(true);
+        encerramento.setDataEncerramento(LocalDateTime.now());
+        encerramento.setUpdatedAt(LocalDateTime.now());
+        encerramentoRepository.save(encerramento);
+    }
+
+    @Transactional
+    public void reabrirCompetencia(Long empresaId, YearMonth competencia) {
+        EncerramentoCompetencia encerramento = encerramentoRepository.findByEmpresaIdAndCompetencia(empresaId, competencia)
+                .orElseThrow(() -> new IllegalArgumentException("Competência não encontrada ou não encerrada"));
+        encerramento.setEncerrado(false);
+        encerramento.setUpdatedAt(LocalDateTime.now());
+        encerramentoRepository.save(encerramento);
+    }
+
+    @Transactional
+    public void salvarDadosSimulacao(Long empresaId, YearMonth competencia, BigDecimal valorFaturamento, BigDecimal valorFolha) {
+        if (isCompetenciaEncerrada(empresaId, competencia)) {
+            throw new IllegalStateException("Não é possível alterar valores de um mês já encerrado (" + competencia + "). Reabra a competência primeiro.");
+        }
+        Empresa empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new IllegalArgumentException("Empresa não encontrada"));
+
+        if (valorFaturamento != null) {
+            List<FaturamentoMensal> fatExistentes = faturamentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia);
+            if (!fatExistentes.isEmpty()) {
+                faturamentoRepository.deleteAll(fatExistentes);
+            }
+            FaturamentoMensal fat = new FaturamentoMensal();
+            fat.setEmpresa(empresa);
+            fat.setCompetencia(competencia);
+            fat.setValor(valorFaturamento);
+            faturamentoRepository.save(fat);
+        }
+
+        if (valorFolha != null) {
+            List<FolhaPagamentoMensal> folhaExistentes = folhaRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia);
+            if (!folhaExistentes.isEmpty()) {
+                folhaRepository.deleteAll(folhaExistentes);
+            }
+            FolhaPagamentoMensal folha = new FolhaPagamentoMensal();
+            folha.setEmpresa(empresa);
+            folha.setCompetencia(competencia);
+            folha.setValor(valorFolha);
+            folhaRepository.save(folha);
+        }
+    }
+
+    private List<String> resolverEmpresaIds(Empresa empresa) {
+        List<String> ids = new java.util.ArrayList<>();
+        if (empresa.getUuidId() != null && !empresa.getUuidId().isBlank()) {
+            ids.add(empresa.getUuidId());
+        }
+        if (empresa.getId() != null) {
+            String numId = String.valueOf(empresa.getId());
+            if (!ids.contains(numId)) {
+                ids.add(numId);
+            }
+        }
+        return ids;
     }
 
     public List<ProjecaoCenarioDTO> simularProximosMeses(Long empresaId, YearMonth competenciaReferencia) {
@@ -303,26 +456,31 @@ public class CalculoFatorRService {
         BigDecimal faturamentoMes1 = faturamentoBase.multiply(multiplicador).setScale(2, RoundingMode.HALF_UP);
         BigDecimal folhaMes1 = folhaBase;
         
-        BigDecimal novoRbt12Mes1 = simulacaoAtual.getRbt12()
+        // Mês 1 (M+1): Janela dos 12 meses anteriores vai de M-11 até M.
+        // Sai M-12 (historico.get(0)) e entra M (faturamentoBase / folhaBase).
+        // O faturamento projetado de M+1 (faturamentoMes1) afeta apenas o DAS de M+1, não o Fator R de M+1.
+        BigDecimal novoRbt12Mes1 = simulacaoAtual.getTotalFaturamento12Meses()
                 .subtract(simulacaoAtual.getHistoricoFaturamentos().get(0).getFaturamento())
-                .add(faturamentoMes1);
+                .add(faturamentoBase);
         
         BigDecimal novoTotalFolhaMes1 = simulacaoAtual.getTotalFolha12Meses()
                 .subtract(simulacaoAtual.getHistoricoFaturamentos().get(0).getFolhaPagamento())
-                .add(folhaMes1);
+                .add(folhaBase);
         
         meses.add(calcularMesProjecao(competenciaAtual.plusMonths(1), faturamentoMes1, folhaMes1, novoRbt12Mes1, novoTotalFolhaMes1, params));
         
         BigDecimal faturamentoMes2 = faturamentoMes1;
         BigDecimal folhaMes2 = folhaBase;
         
+        // Mês 2 (M+2): Janela dos 12 meses anteriores vai de M-10 até M+1.
+        // Sai M-11 (historico.get(1)) e entra M+1 (faturamentoMes1 / folhaMes1 projetados).
         BigDecimal novoRbt12Mes2 = novoRbt12Mes1
                 .subtract(simulacaoAtual.getHistoricoFaturamentos().get(1).getFaturamento())
-                .add(faturamentoMes2);
+                .add(faturamentoMes1);
                 
         BigDecimal novoTotalFolhaMes2 = novoTotalFolhaMes1
                 .subtract(simulacaoAtual.getHistoricoFaturamentos().get(1).getFolhaPagamento())
-                .add(folhaMes2);
+                .add(folhaMes1);
                 
         meses.add(calcularMesProjecao(competenciaAtual.plusMonths(2), faturamentoMes2, folhaMes2, novoRbt12Mes2, novoTotalFolhaMes2, params));
 

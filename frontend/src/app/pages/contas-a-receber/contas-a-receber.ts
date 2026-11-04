@@ -10,7 +10,6 @@ import {
 import { EmpresaContextService } from '../../services/empresa-context.service';
 import {
   ContaReceberDTO,
-  CreateContaReceberDTO,
   ClienteFornecedorDTO
 } from '../../shared/types/receivables.types';
 
@@ -46,10 +45,6 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
   tamanho = 10;
   totalElementos = 0;
   totalPaginas = 0;
-
-  // Modal Criação Manual
-  mostrarModalCriacao = false;
-  novaConta: CreateContaReceberDTO = this.formularioVazio();
 
   // Modal Importação XML com Preview
   mostrarModalXml = false;
@@ -141,46 +136,6 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
     this.carregarContas();
   }
 
-  // --- Modal Criação Manual ---
-  abrirModalCriacao(): void {
-    this.novaConta = this.formularioVazio();
-    this.mostrarModalCriacao = true;
-    this.erro = '';
-    this.sucesso = '';
-  }
-
-  fecharModalCriacao(): void {
-    this.mostrarModalCriacao = false;
-    this.novaConta = this.formularioVazio();
-  }
-
-  salvarConta(): void {
-    if (!this.empresaId) {
-      this.erro = 'Selecione uma empresa antes de cadastrar.';
-      return;
-    }
-    if (!this.novaConta.clienteId || !this.novaConta.valorTotal || !this.novaConta.dataEmissao || !this.novaConta.dataVencimento) {
-      this.erro = 'Preencha todos os campos obrigatórios.';
-      return;
-    }
-
-    const payload: CreateContaReceberDTO = {
-      ...this.novaConta,
-      empresaId: this.empresaId
-    };
-
-    this.service.criar(payload).subscribe({
-      next: () => {
-        this.sucesso = 'Conta a receber cadastrada com sucesso.';
-        this.fecharModalCriacao();
-        this.carregarContas();
-      },
-      error: err => {
-        this.erro = err.error?.message || 'Erro ao cadastrar conta a receber.';
-      }
-    });
-  }
-
   // --- Baixa e Cancelamento ---
   baixarConta(conta: ContaReceberDTO): void {
     if (!confirm(`Deseja confirmar a baixa do título ${conta.numeroDocumento || conta.id}?`)) {
@@ -198,7 +153,7 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
   }
 
   cancelarConta(conta: ContaReceberDTO): void {
-    if (!confirm(`Deseja realmente cancelar o título ${conta.numeroDocumento || conta.id}?`)) {
+    if (!confirm(`Deseja realmente cancelar a cobrança do título ${conta.numeroDocumento || conta.id}? Esta ação não altera o Faturamento Mensal.`)) {
       return;
     }
     this.service.cancelar(this.empresaId, conta.id).subscribe({
@@ -208,6 +163,21 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
       },
       error: err => {
         this.erro = err.error?.message || 'Não foi possível cancelar a conta.';
+      }
+    });
+  }
+
+  cancelarNotaFiscal(conta: ContaReceberDTO): void {
+    if (!confirm(`Confirma o cancelamento da Nota Fiscal ${conta.numeroDocumento || conta.id}? O status mudará para NF_CANCELADA e o valor será abatido do Faturamento Mensal no cálculo do Fator R.`)) {
+      return;
+    }
+    this.service.cancelarNf(this.empresaId, conta.id).subscribe({
+      next: () => {
+        this.sucesso = 'Nota fiscal cancelada com sucesso! O valor foi abatido do Faturamento Mensal.';
+        this.carregarContas();
+      },
+      error: err => {
+        this.erro = err.error?.message || err.error?.erro || 'Não foi possível cancelar a nota fiscal.';
       }
     });
   }
@@ -249,6 +219,9 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
       next: dados => {
         this.previewDados = dados;
         this.carregandoPreview = false;
+        if (dados.periodoEncerrado) {
+          this.erroPreview = dados.mensagemAlertaPeriodo || 'Atenção: A data de emissão desta nota pertence a um período já encerrado.';
+        }
       },
       error: err => {
         this.carregandoPreview = false;
@@ -259,6 +232,10 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
 
   confirmarImportacaoXml(): void {
     if (!this.arquivoXml || !this.empresaId) return;
+    if (this.previewDados?.periodoEncerrado) {
+      this.erroPreview = 'Não é possível importar a nota fiscal em um período já encerrado. Abra o período no Simulador do Fator R.';
+      return;
+    }
 
     this.importandoXml = true;
     this.erroPreview = '';
@@ -274,7 +251,7 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
       },
       error: err => {
         this.importandoXml = false;
-        this.erroPreview = err.error?.message || 'Erro ao importar XML da nota fiscal.';
+        this.erroPreview = err.error?.message || err.error?.erro || 'Erro ao importar XML da nota fiscal.';
       }
     });
   }
@@ -304,17 +281,5 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
   // --- Utilitários ---
   obterNomeCliente(clienteId: string): string {
     return this.clientesMap.get(clienteId) || clienteId || '-';
-  }
-
-  private formularioVazio(): CreateContaReceberDTO {
-    const hoje = new Date().toISOString().substring(0, 10);
-    return {
-      empresaId: this.empresaId,
-      clienteId: '',
-      numeroDocumento: '',
-      valorTotal: 0,
-      dataEmissao: hoje,
-      dataVencimento: hoje
-    };
   }
 }

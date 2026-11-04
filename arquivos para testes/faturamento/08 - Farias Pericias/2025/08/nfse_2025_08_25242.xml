@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35250828146209000187550010000252421002524299">
+    <nNFSe>25242</nNFSe>
+    <emit>
+      <CNPJ>28146209000187</CNPJ>
+      <xNome>Farias Perícias Judiciais e Avaliações Técnicas Ltda</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2025-08-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2025-08-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>47960950000121</CNPJ>
+          <xNome>Magazine Luiza SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>12250.00</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

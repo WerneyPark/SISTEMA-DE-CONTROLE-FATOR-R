@@ -66,13 +66,13 @@
         <button class="modal-close" (click)="fecharModalUsuario()">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="margin-bottom: 16px; color: #94a3b8; font-size: 14px;">
+        <p style="margin-bottom: 16px; color: #475569; font-size: 14px;">
           Acessos para a empresa <strong>{{ empresaSelecionadaParaAcesso?.razaoSocial }}</strong>.
         </p>
 
         <!-- Lista de Usuários Existentes -->
         <div class="usuarios-list" *ngIf="usuariosVinculados.length > 0">
-          <h4 style="margin-bottom: 8px;">Usuários Vinculados</h4>
+          <h4 style="margin-bottom: 8px; color: #0f172a;">Usuários Vinculados</h4>
           <table class="table" style="width: 100%; text-align: left; margin-bottom: 16px;">
             <thead>
               <tr>
@@ -92,11 +92,11 @@
             </tbody>
           </table>
         </div>
-        <p *ngIf="usuariosVinculados.length === 0" style="margin-bottom: 16px;">Nenhum usuário vinculado.</p>
+        <p *ngIf="usuariosVinculados.length === 0" style="margin-bottom: 16px; color: #64748b;">Nenhum usuário vinculado.</p>
 
-        <hr style="border: 1px solid #334155; margin-bottom: 16px;">
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 16px;">
 
-        <h4 style="margin-bottom: 8px;">Vincular Novo Acesso</h4>
+        <h4 style="margin-bottom: 8px; color: #0f172a;">Vincular Novo Acesso</h4>
         <div class="form-group">
           <label>CPF do Usuário (Login)</label>
           <input type="text" [(ngModel)]="novoUsuarioForm.cpf" placeholder="000.000.000-00" maxlength="14" (input)="aplicarMascaraCPF($event)">

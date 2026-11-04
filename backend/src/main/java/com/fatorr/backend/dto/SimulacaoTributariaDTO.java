@@ -18,6 +18,8 @@ public class SimulacaoTributariaDTO {
     // Competência de referência
     private YearMonth competenciaReferencia;
     private int mesesComDados;
+    private boolean competenciaReferenciaEncerrada;
+    private List<String> competenciasEncerradas;
 
     // Totais acumulados (12 meses)
     private BigDecimal totalFaturamento12Meses;

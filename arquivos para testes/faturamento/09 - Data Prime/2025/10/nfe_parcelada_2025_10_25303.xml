@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35251028146226000114550010000253031002530399">
+      <ide>
+        <nNF>25303</nNF>
+        <dhEmi>2025-10-15T09:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>28146226000114</CNPJ>
+        <xNome>Data Prime Ciência de Dados e IA Ltda</xNome>
+        <xFant>Data Prime Analytics</xFant>
+      </emit>
+      <dest>
+        <CNPJ>06057223000171</CNPJ>
+        <xNome>Sendas Distribuidora SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>25000.00</vNF>
+        </ICMSTot>
+      </total>
+      <cobr>
+        <dup>
+          <nDup>1</nDup>
+          <dVenc>2025-10-25</dVenc>
+          <vDup>12500.00</vDup>
+        </dup>
+        <dup>
+          <nDup>2</nDup>
+          <dVenc>2025-11-25</dVenc>
+          <vDup>12500.00</vDup>
+        </dup>
+      </cobr>
+    </infNFe>
+  </NFe>
+</nfeProc>

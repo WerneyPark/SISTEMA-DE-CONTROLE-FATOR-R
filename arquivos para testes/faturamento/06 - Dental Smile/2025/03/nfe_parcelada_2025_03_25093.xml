@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35250328146175000120550010000250931002509399">
+      <ide>
+        <nNF>25093</nNF>
+        <dhEmi>2025-03-15T09:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>28146175000120</CNPJ>
+        <xNome>Dental Smile Care Odontologia Especializada Ltda</xNome>
+        <xFant>Dental Smile Care</xFant>
+      </emit>
+      <dest>
+        <CNPJ>33592510000154</CNPJ>
+        <xNome>Vale SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>11250.00</vNF>
+        </ICMSTot>
+      </total>
+      <cobr>
+        <dup>
+          <nDup>1</nDup>
+          <dVenc>2025-03-25</dVenc>
+          <vDup>5625.00</vDup>
+        </dup>
+        <dup>
+          <nDup>2</nDup>
+          <dVenc>2025-04-25</dVenc>
+          <vDup>5625.00</vDup>
+        </dup>
+      </cobr>
+    </infNFe>
+  </NFe>
+</nfeProc>

@@ -25,6 +25,8 @@ export interface DadosNotaFiscalDTO {
   dataVencimento: string;
   numeroDocumento: string;
   parcelas?: ParcelaNotaFiscalDTO[];
+  periodoEncerrado?: boolean;
+  mensagemAlertaPeriodo?: string;
 }
 
 export interface ContaReceberPage {
@@ -97,6 +99,11 @@ export class ContaReceberService {
   cancelar(empresaId: string, id: string): Observable<void> {
     const params = new HttpParams().set('empresaId', empresaId);
     return this.http.delete<void>(`${this.url}/${id}`, { params });
+  }
+
+  cancelarNf(empresaId: string, id: string): Observable<ContaReceberDTO> {
+    const params = new HttpParams().set('empresaId', empresaId);
+    return this.http.post<ContaReceberDTO>(`${this.url}/${id}/cancelar-nf`, null, { params });
   }
 
   previewXml(empresaId: string, arquivo: File): Observable<DadosNotaFiscalDTO> {

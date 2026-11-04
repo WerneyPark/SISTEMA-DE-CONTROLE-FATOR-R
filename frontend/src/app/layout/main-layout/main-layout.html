@@ -1,46 +1,199 @@
-<div class="layout-wrapper">
-  <!-- Header Global -->
-  <header class="main-header">
-    <div class="header-left">
-      <div class="brand">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+<div class="app-layout" [class.sidebar-collapsed]="sidebarCollapsed" [class.mobile-open]="mobileMenuOpen">
+  <!-- Fundo Animado Atmosférico (Padrão Login) -->
+  <div class="bg-orb orb-top-left"></div>
+  <div class="bg-orb orb-bottom-right"></div>
+
+  <!-- Backdrop para Mobile -->
+  <div class="mobile-backdrop" (click)="closeMobileMenu()"></div>
+
+  <!-- SIDEBAR LATERAL MODERNA -->
+  <aside class="sidebar">
+    <!-- Header da Sidebar -->
+    <div class="sidebar-header">
+      <div class="brand-box" routerLink="/home">
+        <div class="brand-logo-icon"></div>
+        <div class="brand-texts" *ngIf="!sidebarCollapsed">
+          <span class="brand-name">Fator R</span>
+          <span class="brand-subtitle">Gestão Tributária</span>
+        </div>
+      </div>
+      <button class="btn-toggle-sidebar" (click)="toggleSidebar()" [title]="sidebarCollapsed ? 'Expandir Menu' : 'Recolher Menu'">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline [attr.points]="sidebarCollapsed ? '9 18 15 12 9 6' : '15 18 9 12 15 6'"></polyline>
         </svg>
-        <span>Fator R</span>
-      </div>
-      <nav class="main-nav">
-        <a routerLink="/home" routerLinkActive="active">Início</a>
-        <a routerLink="/simulador" routerLinkActive="active">Simulador</a>
-        <a routerLink="/contas-a-receber" routerLinkActive="active">Contas a Receber</a>
-        <a routerLink="/banking" routerLinkActive="active">Conciliação</a>
-        <a routerLink="/payroll" routerLinkActive="active">Folha & eSocial</a>
-        <a routerLink="/reports" routerLinkActive="active">Dossiês & Laudos</a>
-        <a routerLink="/empresas" routerLinkActive="active">Empresas</a>
-        <a routerLink="/parametros" routerLinkActive="active">Parâmetros</a>
-        <a *ngIf="isAdmin" routerLink="/parametros-padrao" routerLinkActive="active">Parâmetros Padrão</a>
-        <a *ngIf="isAdmin" routerLink="/usuarios-admin" routerLinkActive="active">Usuários (Admin)</a>
-      </nav>
+      </button>
     </div>
-    
-    <div class="header-right">
-      <div class="company-selector">
-        <span class="selector-label">Empresa Atual:</span>
-        <select [(ngModel)]="empresaSelecionadaId" (change)="onEmpresaChange()" class="header-select">
-          <option [ngValue]="null" disabled>Selecione...</option>
-          <option *ngFor="let emp of empresas" [value]="emp.id">{{ emp.razaoSocial }}</option>
-        </select>
+
+    <!-- Navegação Agrupada -->
+    <nav class="sidebar-nav">
+      <!-- GRUPO: VISÃO GERAL -->
+      <div class="nav-group">
+        <div class="group-title" *ngIf="!sidebarCollapsed">Visão Geral</div>
+        <a routerLink="/home" routerLinkActive="active" class="nav-item" title="Dashboard Executivo">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Dashboard</span>
+        </a>
       </div>
-      <div class="user-info">
-        <span class="user-badge" [title]="usuarioNome">{{ usuarioAtual.substring(0,2).toUpperCase() || 'US' }}</span>
-        <button class="btn-logout" (click)="logout()" title="Sair">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+
+      <!-- GRUPO: PLANEJAMENTO FISCAL -->
+      <div class="nav-group">
+        <div class="group-title" *ngIf="!sidebarCollapsed">Planejamento Fiscal</div>
+        <a routerLink="/simulador" routerLinkActive="active" class="nav-item" title="Simulador Fator R">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3v18h18"></path>
+            <path d="M7 16l4-4 4 4 5-5"></path>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Simulador Fator R</span>
+        </a>
+        <a routerLink="/payroll" routerLinkActive="active" class="nav-item" title="Folha & eSocial">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Folha & eSocial</span>
+        </a>
+        <a routerLink="/reports" routerLinkActive="active" class="nav-item" title="Dossiês & Laudos">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Dossiês & Laudos</span>
+        </a>
+      </div>
+
+      <!-- GRUPO: FINANCEIRO & BANCOS -->
+      <div class="nav-group">
+        <div class="group-title" *ngIf="!sidebarCollapsed">Financeiro & Bancos</div>
+        <a routerLink="/contas-a-receber" routerLinkActive="active" class="nav-item" title="Contas a Receber">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Contas a Receber</span>
+        </a>
+        <a routerLink="/banking" routerLinkActive="active" class="nav-item" title="Conciliação Bancária">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Conciliação Bancária</span>
+        </a>
+      </div>
+
+      <!-- GRUPO: GESTÃO & ADMINISTRAÇÃO -->
+      <div class="nav-group">
+        <div class="group-title" *ngIf="!sidebarCollapsed">Gestão & Administração</div>
+        <a routerLink="/empresas" routerLinkActive="active" class="nav-item" title="Empresas Cadastradas">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 21h18M3 7v14M21 7v14M8 21v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4M12 7V3M10 5h4"></path>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Empresas</span>
+        </a>
+        <a routerLink="/parametros" routerLinkActive="active" class="nav-item" title="Parâmetros Tributários">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Parâmetros Empresa</span>
+        </a>
+        <a *ngIf="isAdmin" routerLink="/parametros-padrao" routerLinkActive="active" class="nav-item" title="Parâmetros Globais">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Parâmetros Globais</span>
+        </a>
+        <a *ngIf="isAdmin" routerLink="/usuarios-admin" routerLinkActive="active" class="nav-item" title="Usuários & Acessos">
+          <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Usuários & Acessos</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Rodapé da Sidebar: Usuário & Logout -->
+    <div class="sidebar-footer">
+      <div class="user-profile-card">
+        <div class="user-avatar" [title]="usuarioNome">
+          {{ usuarioAtual.substring(0, 2).toUpperCase() || 'US' }}
+        </div>
+        <div class="user-details" *ngIf="!sidebarCollapsed">
+          <span class="user-name" [title]="usuarioNome">{{ usuarioNome }}</span>
+          <span class="user-role">{{ usuarioPerfil }}</span>
+        </div>
+        <button class="btn-logout" (click)="logout()" title="Encerrar Sessão">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
         </button>
       </div>
     </div>
-  </header>
+  </aside>
 
-  <!-- Content Area -->
-  <main class="main-content">
-    <router-outlet></router-outlet>
-  </main>
+  <!-- ÁREA PRINCIPAL -->
+  <div class="main-wrapper">
+    <!-- TOPBAR LIMPA E MODERNA -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <!-- Botão Menu Mobile -->
+        <button class="btn-mobile-menu" (click)="toggleMobileMenu()" title="Abrir Menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <div class="page-title-box">
+          <span class="page-category">{{ currentRouteInfo.category }}</span>
+          <h1 class="page-title">{{ currentRouteInfo.title }}</h1>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- SELETOR GLOBAL DE EMPRESA -->
+        <div class="company-selector-glass">
+          <div class="selector-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 21h18M3 7v14M21 7v14M8 21v-4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4M12 7V3M10 5h4"></path>
+            </svg>
+          </div>
+          <div class="selector-body">
+            <span class="selector-tag">Empresa Ativa:</span>
+            <select [(ngModel)]="empresaSelecionadaId" (change)="onEmpresaChange()" class="company-select">
+              <option [ngValue]="null" disabled>Selecione uma empresa...</option>
+              <option *ngFor="let emp of empresas" [value]="emp.id">
+                {{ emp.razaoSocial }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Indicador de Status / Usuário Ativo -->
+        <div class="status-indicator-badge" [title]="'Conectado como ' + usuarioPerfil">
+          <span class="pulse-dot"></span>
+          <span class="status-text">Online</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTEÚDO DINÂMICO (ROUTER OUTLET) -->
+    <main class="page-viewport">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
 </div>

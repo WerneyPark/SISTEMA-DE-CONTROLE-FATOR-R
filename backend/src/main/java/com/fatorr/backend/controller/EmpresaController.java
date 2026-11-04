@@ -101,4 +101,52 @@ public class EmpresaController {
         List<com.fatorr.backend.dto.ProjecaoCenarioDTO> resultado = calculoFatorRService.simularProximosMeses(id, competencia);
         return ResponseEntity.ok(resultado);
     }
+
+    @PostMapping("/{id}/competencias/{competencia}/encerrar")
+    public ResponseEntity<?> encerrarCompetencia(
+            @PathVariable Long id,
+            @PathVariable String competencia) {
+        try {
+            YearMonth ym = YearMonth.parse(competencia);
+            calculoFatorRService.encerrarCompetencia(id, ym);
+            return ResponseEntity.ok(java.util.Map.of("mensagem", "Competência " + competencia + " encerrada com sucesso."));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/competencias/{competencia}/reabrir")
+    public ResponseEntity<?> reabrirCompetencia(
+            @PathVariable Long id,
+            @PathVariable String competencia) {
+        try {
+            YearMonth ym = YearMonth.parse(competencia);
+            calculoFatorRService.reabrirCompetencia(id, ym);
+            return ResponseEntity.ok(java.util.Map.of("mensagem", "Competência " + competencia + " reaberta com sucesso."));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/dados-simulacao")
+    public ResponseEntity<?> salvarDadosSimulacao(
+            @PathVariable Long id,
+            @RequestBody DadosSimulacaoRequest request) {
+        try {
+            if (request.competencia() == null || request.competencia().isBlank()) {
+                throw new IllegalArgumentException("A competência é obrigatória.");
+            }
+            YearMonth ym = YearMonth.parse(request.competencia());
+            calculoFatorRService.salvarDadosSimulacao(id, ym, request.valorFaturamento(), request.valorFolha());
+            return ResponseEntity.ok(java.util.Map.of("mensagem", "Dados de simulação salvos com sucesso."));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage()));
+        }
+    }
+
+    public record DadosSimulacaoRequest(
+            String competencia,
+            java.math.BigDecimal valorFaturamento,
+            java.math.BigDecimal valorFolha
+    ) {}
 }

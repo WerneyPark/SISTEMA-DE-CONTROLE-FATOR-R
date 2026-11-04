@@ -49,13 +49,29 @@ public class BankingController {
     }
 
     @GetMapping("/extrato/{empresaId}/pendentes")
-    public List<ExtratoLancamento> listarLancamentosPendentes(@PathVariable String empresaId) {
-        return bankingService.listarLancamentosPendentes(empresaId);
+    public List<ExtratoLancamento> listarLancamentosPendentes(
+            @PathVariable String empresaId,
+            @RequestParam(required = false) String competencia) {
+        return bankingService.listarLancamentosPendentes(empresaId, competencia);
     }
 
     @GetMapping("/contas-receber/{empresaId}/pendentes")
-    public List<ContaReceber> listarContasPendentes(@PathVariable String empresaId) {
-        return bankingService.listarContasPendentes(empresaId);
+    public List<ContaReceber> listarContasPendentes(
+            @PathVariable String empresaId,
+            @RequestParam(required = false) String competencia) {
+        return bankingService.listarContasPendentes(empresaId, competencia);
+    }
+
+    @DeleteMapping("/extrato/{id}")
+    public ResponseEntity<?> excluirLancamentoExtrato(
+            @PathVariable String id,
+            @RequestParam String empresaId) {
+        try {
+            bankingService.excluirLancamentoExtrato(empresaId, id);
+            return ResponseEntity.ok(Map.of("mensagem", "Lançamento excluído com sucesso", "id", id));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
     }
 
     @PostMapping("/conciliar")
@@ -80,8 +96,10 @@ public class BankingController {
     }
 
     @GetMapping("/conciliacoes/{empresaId}")
-    public ResponseEntity<List<BankingService.ConciliacaoDetalhadaDTO>> listarConciliacoes(@PathVariable String empresaId) {
-        List<BankingService.ConciliacaoDetalhadaDTO> historico = bankingService.listarConciliacoes(empresaId);
+    public ResponseEntity<List<BankingService.ConciliacaoDetalhadaDTO>> listarConciliacoes(
+            @PathVariable String empresaId,
+            @RequestParam(required = false) String competencia) {
+        List<BankingService.ConciliacaoDetalhadaDTO> historico = bankingService.listarConciliacoes(empresaId, competencia);
         return ResponseEntity.ok(historico);
     }
 

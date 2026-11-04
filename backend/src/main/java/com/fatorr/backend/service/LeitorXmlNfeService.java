@@ -36,7 +36,24 @@ public class LeitorXmlNfeService {
             LocalDate dataEmissao,
             LocalDate dataVencimento,
             String numeroDocumento,
-            List<ParcelaNotaFiscal> parcelas) {
+            List<ParcelaNotaFiscal> parcelas,
+            boolean periodoEncerrado,
+            String mensagemAlertaPeriodo) {
+
+        public DadosNotaFiscal(
+                String chaveAcesso,
+                String cnpjEmitente,
+                String nomeEmitente,
+                String cnpjTomador,
+                String nomeTomador,
+                BigDecimal valorTotal,
+                LocalDate dataEmissao,
+                LocalDate dataVencimento,
+                String numeroDocumento,
+                List<ParcelaNotaFiscal> parcelas) {
+            this(chaveAcesso, cnpjEmitente, nomeEmitente, cnpjTomador, nomeTomador,
+                 valorTotal, dataEmissao, dataVencimento, numeroDocumento, parcelas, false, null);
+        }
 
         public DadosNotaFiscal(
                 String chaveAcesso,
@@ -49,7 +66,7 @@ public class LeitorXmlNfeService {
                 LocalDate dataVencimento,
                 String numeroDocumento) {
             this(chaveAcesso, cnpjEmitente, nomeEmitente, cnpjTomador, nomeTomador,
-                 valorTotal, dataEmissao, dataVencimento, numeroDocumento, List.of());
+                 valorTotal, dataEmissao, dataVencimento, numeroDocumento, List.of(), false, null);
         }
     }
 
@@ -102,26 +119,26 @@ public class LeitorXmlNfeService {
             factory.setExpandEntityReferences(false);
             Document document = factory.newDocumentBuilder().parse(arquivoXml);
 
-            String cnpjEmitente = firstTextInContexts(document, new String[] {"CNPJ", "Cnpj"},
-                    "emit", "prestador", "prestadorServico", "IdentificacaoPrestador");
-            String cnpjTomador = firstTextInContexts(document, new String[] {"CNPJ", "Cnpj", "CPF", "Cpf"},
+            String cnpjEmitente = firstTextInContexts(document, new String[] {"CNPJ", "Cnpj", "cnpj", "CPF", "Cpf", "cpf"},
+                    "emit", "prest", "prestador", "prestadorServico", "IdentificacaoPrestador");
+            String cnpjTomador = firstTextInContexts(document, new String[] {"CNPJ", "Cnpj", "cnpj", "CPF", "Cpf", "cpf"},
                     "dest", "toma", "tomador", "tomadorServico", "IdentificacaoTomador");
             String nomeEmitente = firstTextInContexts(document,
-                    new String[] {"xNome", "RazaoSocial", "Nome"},
-                    "emit", "prestador", "prestadorServico");
+                    new String[] {"xNome", "RazaoSocial", "razaoSocial", "Nome", "nome", "xFant"},
+                    "emit", "prest", "prestador", "prestadorServico");
             String nomeTomador = firstTextInContexts(document,
-                    new String[] {"xNome", "RazaoSocial", "Nome"},
+                    new String[] {"xNome", "RazaoSocial", "razaoSocial", "Nome", "nome", "xFant"},
                     "dest", "toma", "tomador", "tomadorServico");
             String valor = firstTextInContexts(document,
                     new String[] {"vNF", "vServ", "vLiq", "valorServico", "ValorServicos",
                             "ValorLiquidoNfse", "ValorNfse"});
             String data = firstTextInContexts(document,
-                    new String[] {"dhEmi", "dEmi", "dataEmissao", "DataEmissao", "competencia"});
+                    new String[] {"dhEmi", "dEmi", "dataEmissao", "DataEmissao", "dCompet", "competencia", "Competencia"});
             String vencimento = firstTextInContexts(document,
                     new String[] {"dVenc", "vencimento", "dataVencimento", "DataVencimento"});
             String chave = extractKey(document);
             String numero = firstTextInContexts(document,
-                    new String[] {"nNF", "nNFS", "numero", "numeroNota", "Numero"});
+                    new String[] {"nNF", "nNFSe", "nNFS", "numero", "numeroNota", "Numero", "nDPS"});
 
             if (cnpjEmitente == null || cnpjTomador == null || valor == null || data == null) {
                 throw new IllegalArgumentException(
@@ -212,14 +229,27 @@ public class LeitorXmlNfeService {
     }
 
     private String extractKey(Document document) {
-        NodeList nodes = document.getElementsByTagNameNS("*", "infNFe");
-        if (nodes.getLength() > 0) {
-            String id = ((Element) nodes.item(0)).getAttribute("Id");
-            if (id != null && !id.isBlank()) {
-                return id.startsWith("NFe") ? id.substring(3) : id;
+        String[] infoTags = new String[] {"infNFe", "infNFSe", "infDPS"};
+        for (String infoTag : infoTags) {
+            NodeList nodes = document.getElementsByTagNameNS("*", infoTag);
+            if (nodes.getLength() == 0) {
+                nodes = document.getElementsByTagName(infoTag);
+            }
+            if (nodes.getLength() > 0) {
+                Element el = (Element) nodes.item(0);
+                String id = el.hasAttribute("Id") ? el.getAttribute("Id") : el.getAttribute("id");
+                if (id != null && !id.isBlank()) {
+                    id = id.trim();
+                    if (id.startsWith("NFe")) return id.substring(3);
+                    if (id.startsWith("NFSe")) return id.substring(4);
+                    if (id.startsWith("NFS")) return id.substring(3);
+                    if (id.startsWith("DPS")) return id.substring(3);
+                    if (id.startsWith("ID")) return id.substring(2);
+                    return id;
+                }
             }
         }
-        return firstText(document, "chNFe", "chave", "chaveAcesso", "Chave");
+        return firstText(document, "chNFe", "chNFSe", "chave", "chaveAcesso", "Chave", "cVerif", "CodigoVerificacao");
     }
 
     private String firstTextInContexts(Document document, String[] valueNames,

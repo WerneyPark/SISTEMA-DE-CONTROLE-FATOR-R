@@ -69,6 +69,8 @@ export interface SimulacaoTributaria {
   regimeMaisVantajoso: string;
   mensagem: string;
   historicoFaturamentos: FaturamentoHistorico[];
+  competenciaReferenciaEncerrada?: boolean;
+  competenciasEncerradas?: string[];
 }
 
 export interface FaixaTributaria {
@@ -84,6 +86,7 @@ export interface FaturamentoHistorico {
   competencia: string;
   faturamento: number;
   folhaPagamento: number;
+  encerrado?: boolean;
 }
 
 export interface MesProjecao {

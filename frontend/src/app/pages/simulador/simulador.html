@@ -8,22 +8,36 @@
     <p>Selecione uma empresa no menu superior para visualizar os cálculos.</p>
   </div>
 
-  <!-- Erro -->
+  <!-- Alertas de Erro / Sucesso -->
   <div class="alert alert-error" *ngIf="erro">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
     <span>{{ erro }}</span>
     <button class="btn-close" (click)="erro = null">&times;</button>
   </div>
 
+  <div class="alert alert-success" *ngIf="sucesso">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span>{{ sucesso }}</span>
+    <button class="btn-close" (click)="sucesso = null">&times;</button>
+  </div>
+
   <!-- Conteúdo principal quando empresa selecionada -->
   <div *ngIf="empresaSelecionada" class="content-grid">
-    <!-- Competência Selector -->
+    <!-- Competência Selector & Ações Rápidas -->
     <div class="card competencia-card">
       <div class="card-header">
         <h3>Competência de Referência</h3>
-        <button class="btn btn-ghost" (click)="usarCompetenciaAtual()">
-          Mês Atual
-        </button>
+        <div class="header-action-buttons">
+          <button class="btn btn-secondary btn-sm" (click)="abrirModalXml()">
+            <span class="icon">📄</span> Importar XML NF-e
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="abrirModalInserirDados()">
+            <span class="icon">+</span> Inserir Dados para Simulação
+          </button>
+          <button class="btn btn-ghost btn-sm" (click)="usarCompetenciaAtual()">
+            Mês Atual
+          </button>
+        </div>
       </div>
       <div class="competencia-form">
         <div class="form-group">
@@ -93,7 +107,7 @@
       <div class="comparativo-grid">
         <div class="regime-box" [class.destaque]="simulacao.regimeMaisVantajoso === 'Simples Nacional'">
           <h4>Simples ({{ simulacao.anexoAplicavel }})</h4>
-          <div style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">
+          <div style="font-size: 13px; color: #475569; margin-bottom: 8px;">
             RBT12: {{ formatCurrency(simulacao.rbt12) }}<br>
             Enquadramento: <strong>{{ simulacao.faixaEncontrada }}ª Faixa</strong><br>
             Alíquota Efetiva: {{ simulacao.aliquotaEfetivaSimplesNacional | number:'1.2-2' }}%
@@ -103,9 +117,9 @@
         <div class="vs-divider"><span>VS</span></div>
         <div class="regime-box" [class.destaque]="simulacao.regimeMaisVantajoso === 'Lucro Presumido'">
           <h4>Lucro Presumido</h4>
-          <div style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">
+          <div style="font-size: 13px; color: #475569; margin-bottom: 8px;">
             Alíquota Efetiva: {{ simulacao.aliquotaEfetivaLucroPresumido | number:'1.2-2' }}%
-            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
               <div>PIS: <br><strong>{{ formatCurrency(simulacao.valorPis) }}</strong></div>
               <div>COFINS: <br><strong>{{ formatCurrency(simulacao.valorCofins) }}</strong></div>
               <div>ISS: <br><strong>{{ formatCurrency(simulacao.valorIss) }}</strong></div>
@@ -122,72 +136,13 @@
       </div>
     </div>
 
-    <!-- Formulários de Lançamento -->
-    <div class="card lancamento-card">
-      <div class="card-header">
-        <h3>Lançamentos de Dados</h3>
-        <button class="btn btn-primary" (click)="toggleFormLancamento()">
-          {{ mostrarFormLancamento ? 'Esconder Formulários' : '+ Fazer Lançamentos' }}
-        </button>
-      </div>
-
-      <div class="lancamento-tabs" *ngIf="mostrarFormLancamento">
-        <div class="alert alert-success" *ngIf="lancamentoSucesso">
-          <span>{{ lancamentoSucesso }}</span>
-        </div>
-
-        <!-- Faturamento -->
-        <div class="form-section">
-          <h4>Registrar Faturamento</h4>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Mês</label>
-              <select [(ngModel)]="lancamentoFaturamento.mes">
-                <option *ngFor="let m of meses" [value]="m.valor">{{ m.nome }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Ano</label>
-              <input type="number" [(ngModel)]="lancamentoFaturamento.ano" min="2020" max="2030">
-            </div>
-            <div class="form-group" style="flex: 2;">
-              <label>Valor Bruto (R$)</label>
-              <input type="number" [(ngModel)]="lancamentoFaturamento.valor" step="0.01" min="0">
-            </div>
-          </div>
-          <button class="btn btn-secondary btn-block" (click)="salvarFaturamento()">Salvar Faturamento</button>
-        </div>
-
-        <div class="divider-or" style="margin: 20px 0; border-top: 1px dashed rgba(255,255,255,0.1);"></div>
-
-        <!-- Folha -->
-        <div class="form-section">
-          <h4>Registrar Folha de Pagamento</h4>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Mês</label>
-              <select [(ngModel)]="lancamentoFolha.mes">
-                <option *ngFor="let m of meses" [value]="m.valor">{{ m.nome }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Ano</label>
-              <input type="number" [(ngModel)]="lancamentoFolha.ano" min="2020" max="2030">
-            </div>
-            <div class="form-group" style="flex: 2;">
-              <label>Valor Bruto (R$)</label>
-              <input type="number" [(ngModel)]="lancamentoFolha.valor" step="0.01" min="0">
-            </div>
-          </div>
-          <button class="btn btn-secondary btn-block" (click)="salvarFolha()">Salvar Folha</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Histórico de Faturamento -->
+    <!-- Histórico de Faturamento e Encerramento de Competências -->
     <div class="card historico-card" *ngIf="simulacao?.historicoFaturamentos?.length">
       <div class="card-header">
-        <h3>Histórico Base (Últimos 12 Meses + Atual)</h3>
+        <div>
+          <h3>Histórico Base (Últimos 12 Meses + Atual)</h3>
+          <p class="subtitle-text">Encerre os meses concluídos para travar seus valores consolidados com base nos XMLs e eSocial.</p>
+        </div>
       </div>
       <div class="table-responsive">
         <table class="historico-table">
@@ -196,13 +151,36 @@
               <th>Competência</th>
               <th class="text-right">Faturamento</th>
               <th class="text-right">Folha de Pagamento</th>
+              <th class="text-center">Status</th>
+              <th class="text-center">Ações</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let item of simulacao!.historicoFaturamentos">
-              <td>{{ item.competencia }}</td>
+              <td><strong>{{ item.competencia }}</strong></td>
               <td class="text-right">{{ formatCurrency(item.faturamento) }}</td>
               <td class="text-right">{{ formatCurrency(item.folhaPagamento) }}</td>
+              <td class="text-center">
+                <span class="badge-status" [class.badge-encerrado]="item.encerrado" [class.badge-aberto]="!item.encerrado">
+                  {{ item.encerrado ? 'Encerrado' : 'Aberto' }}
+                </span>
+              </td>
+              <td class="text-center">
+                <button
+                  *ngIf="!item.encerrado"
+                  class="btn btn-secondary btn-xs"
+                  (click)="encerrarCompetencia(item.competencia)"
+                  title="Encerrar competência e travar valores apurados">
+                  Encerrar Mês
+                </button>
+                <button
+                  *ngIf="item.encerrado"
+                  class="btn btn-outline btn-xs"
+                  (click)="reabrirCompetencia(item.competencia)"
+                  title="Reabrir competência para permitir alterações">
+                  Reabrir
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -232,6 +210,213 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: INSERIR DADOS PARA SIMULAÇÃO -->
+  <div class="modal-overlay" *ngIf="mostrarModalInserirDados" (click)="fecharModalInserirDados()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Inserir Dados para Simulação</h3>
+        <button class="modal-close" (click)="fecharModalInserirDados()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-desc">
+          Informe o mês, o ano e os valores estimados de faturamento e folha de pagamento. Apenas meses <strong>não encerrados</strong> podem ter valores alterados.
+        </p>
+
+        <!-- Alerta se o mês estiver encerrado -->
+        <div class="alert alert-warning" *ngIf="modalMesEncerrado">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>
+            <strong>Competência {{ modalCompetenciaFormatada }} está encerrada.</strong><br>
+            Não é possível alterar os valores deste mês. Reabra a competência na tabela de histórico para editar.
+          </div>
+        </div>
+
+        <div class="alert alert-error" *ngIf="modalErro">
+          <span>{{ modalErro }}</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Mês</label>
+            <select [(ngModel)]="modalMes" (change)="onModalCompetenciaChange()">
+              <option *ngFor="let m of meses" [value]="m.valor">{{ m.nome }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ano</label>
+            <input type="number" [(ngModel)]="modalAno" (change)="onModalCompetenciaChange()" min="2020" max="2030">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Faturamento Bruto (R$)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            [(ngModel)]="modalFaturamento"
+            [disabled]="modalMesEncerrado"
+            placeholder="0,00"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Folha de Pagamento Total (R$)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            [(ngModel)]="modalFolha"
+            [disabled]="modalMesEncerrado"
+            placeholder="0,00"
+          />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="fecharModalInserirDados()" [disabled]="salvandoDados">
+          Cancelar
+        </button>
+        <button
+          class="btn btn-primary"
+          (click)="salvarDadosSimulacao()"
+          [disabled]="modalMesEncerrado || salvandoDados">
+          {{ salvandoDados ? 'Salvando...' : 'Salvar Dados' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD E PREVIEW XML NF-e NO SIMULADOR -->
+  <div class="modal-overlay" *ngIf="mostrarModalXml" (click)="fecharModalXml()">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Importar Nota Fiscal XML (NF-e / NFS-e)</h3>
+        <button class="modal-close" (click)="fecharModalXml()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-desc">
+          Faça o upload do XML da nota fiscal emitida. O sistema cadastrará as parcelas em Contas a Receber e atualizará automaticamente o Faturamento Mensal no cálculo do Fator R.
+        </p>
+
+        <!-- Seletor de Arquivo -->
+        <div class="upload-area">
+          <input
+            type="file"
+            id="xmlFileInputSimulador"
+            accept=".xml,text/xml"
+            (change)="selecionarArquivoXml($event)"
+            hidden
+          />
+          <label for="xmlFileInputSimulador" class="upload-label">
+            <span class="upload-icon">📂</span>
+            <span *ngIf="!arquivoXml">Clique para selecionar o arquivo XML da NF-e</span>
+            <span *ngIf="arquivoXml" class="upload-selected">Arquivo: <strong>{{ arquivoXml.name }}</strong></span>
+          </label>
+        </div>
+
+        <!-- Alerta de Erro de Preview/Importação ou Bloqueio de Período Encerrado -->
+        <div *ngIf="erroPreview" class="alert alert-error" style="margin-top: 14px;">
+          <span>{{ erroPreview }}</span>
+        </div>
+
+        <!-- Indicador de Carregamento do Preview -->
+        <div *ngIf="carregandoPreview" class="loading-state">
+          <p>Analisando XML da nota fiscal...</p>
+        </div>
+
+        <!-- Painel de Pré-visualização -->
+        <div *ngIf="previewDados && !carregandoPreview" class="preview-panel">
+          <div class="preview-header">
+            <h4>Pré-visualização dos Dados Fiscais</h4>
+            <span class="tag-status-preview" [class.tag-encerrado]="previewDados.periodoEncerrado">
+              {{ previewDados.periodoEncerrado ? 'Período Encerrado' : 'XML Válido' }}
+            </span>
+          </div>
+
+          <!-- Alerta de Período Encerrado -->
+          <div *ngIf="previewDados.periodoEncerrado" class="alert alert-warning" style="margin-bottom: 12px;">
+            <strong>Aviso de Período Encerrado:</strong> A data de emissão desta nota pertence a um período já encerrado. Abra o período no Simulador do Fator R para que o valor seja inserido corretamente.
+          </div>
+
+          <div class="preview-grid">
+            <div class="preview-item">
+              <span class="label">Emitente:</span>
+              <span class="val"><strong>{{ previewDados.nomeEmitente || 'Razão Social não inf.' }}</strong> (CNPJ: {{ previewDados.cnpjEmitente }})</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Tomador / Cliente:</span>
+              <span class="val"><strong>{{ previewDados.nomeTomador || 'Nome não informado' }}</strong> (CNPJ/CPF: {{ previewDados.cnpjTomador }})</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Número da Nota:</span>
+              <span class="val">{{ previewDados.numeroDocumento || 'Sem número' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Valor Total:</span>
+              <span class="val font-bold valor-destaque">{{ formatCurrency(previewDados.valorTotal) }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Data de Emissão:</span>
+              <span class="val">{{ previewDados.dataEmissao | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="label">Data de Vencimento:</span>
+              <span class="val">{{ previewDados.dataVencimento | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="preview-item full-width" *ngIf="previewDados.chaveAcesso">
+              <span class="label">Chave de Acesso:</span>
+              <span class="val font-mono">{{ previewDados.chaveAcesso }}</span>
+            </div>
+          </div>
+
+          <!-- Parcelas da Nota -->
+          <div *ngIf="previewDados.parcelas && previewDados.parcelas.length > 0" class="parcelas-preview">
+            <h5>Parcelas a Gerar em Contas a Receber ({{ previewDados.parcelas.length }})</h5>
+            <table class="sub-table">
+              <thead>
+                <tr>
+                  <th>Parcela</th>
+                  <th>Vencimento</th>
+                  <th>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let p of previewDados.parcelas">
+                  <td>{{ p.numero }}</td>
+                  <td>{{ p.dataVencimento | date:'dd/MM/yyyy' }}</td>
+                  <td>{{ formatCurrency(p.valor) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Checkbox de integração com FaturamentoMensal -->
+          <div class="checkbox-group">
+            <label>
+              <input type="checkbox" [(ngModel)]="atualizarFaturamento" />
+              Alimentar automaticamente o Faturamento Mensal desta competência ({{ previewDados.dataEmissao | date:'MM/yyyy' }})
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="fecharModalXml()" [disabled]="importandoXml">
+          Cancelar
+        </button>
+        <button
+          class="btn btn-primary"
+          [disabled]="!previewDados || previewDados.periodoEncerrado || importandoXml"
+          (click)="confirmarImportacaoXml()">
+          {{ importandoXml ? 'Importando...' : 'Confirmar Importação' }}
+        </button>
       </div>
     </div>
   </div>

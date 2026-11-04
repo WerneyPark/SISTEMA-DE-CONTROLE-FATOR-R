@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35250412345000101000550010000251231002512399">
+      <ide>
+        <nNF>25123</nNF>
+        <dhEmi>2025-04-15T09:15:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>12ABC345000101</CNPJ>
+        <xNome>Empresa Alpha Serviços</xNome>
+        <xFant>Alpha Serviços Contábeis</xFant>
+      </emit>
+      <dest>
+        <CNPJ>06057223000171</CNPJ>
+        <xNome>Sendas Distribuidora SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>10000.00</vNF>
+        </ICMSTot>
+      </total>
+      <cobr>
+        <dup>
+          <nDup>1</nDup>
+          <dVenc>2025-04-25</dVenc>
+          <vDup>5000.00</vDup>
+        </dup>
+        <dup>
+          <nDup>2</nDup>
+          <dVenc>2025-05-25</dVenc>
+          <vDup>5000.00</vDup>
+        </dup>
+      </cobr>
+    </infNFe>
+  </NFe>
+</nfeProc>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35250228146090000142550010000250621002506299">
+    <nNFSe>25062</nNFSe>
+    <emit>
+      <CNPJ>28146090000142</CNPJ>
+      <xNome>Inovar Tecnologia e Desenvolvimento de Software Ltda</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2025-02-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2025-02-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>47960950000121</CNPJ>
+          <xNome>Magazine Luiza SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>14000.00</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

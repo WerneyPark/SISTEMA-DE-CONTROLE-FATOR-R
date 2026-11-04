@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35250712345000101000550010000252121002521299">
+    <nNFSe>25212</nNFSe>
+    <emit>
+      <CNPJ>12ABC345000101</CNPJ>
+      <xNome>Empresa Alpha Serviços</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2025-07-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2025-07-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>33000167000101</CNPJ>
+          <xNome>Petrobras Petroleo Brasileiro SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>14000.00</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

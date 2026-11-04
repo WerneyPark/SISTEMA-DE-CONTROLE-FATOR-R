@@ -35,12 +35,18 @@ export class BankingService {
     );
   }
 
-  listarLancamentosPendentes(empresaId: string): Observable<ExtratoLancamentoDTO[]> {
-    return this.http.get<ExtratoLancamentoDTO[]>(`${this.baseUrl}/extrato/${empresaId}/pendentes`);
+  listarLancamentosPendentes(empresaId: string, competencia?: string): Observable<ExtratoLancamentoDTO[]> {
+    const url = `${this.baseUrl}/extrato/${empresaId}/pendentes` + (competencia ? `?competencia=${competencia}` : '');
+    return this.http.get<ExtratoLancamentoDTO[]>(url);
   }
 
-  listarContasPendentes(empresaId: string): Observable<ContaReceberDTO[]> {
-    return this.http.get<ContaReceberDTO[]>(`${this.baseUrl}/contas-receber/${empresaId}/pendentes`);
+  listarContasPendentes(empresaId: string, competencia?: string): Observable<ContaReceberDTO[]> {
+    const url = `${this.baseUrl}/contas-receber/${empresaId}/pendentes` + (competencia ? `?competencia=${competencia}` : '');
+    return this.http.get<ContaReceberDTO[]>(url);
+  }
+
+  excluirLancamentoExtrato(empresaId: string, id: string): Observable<any> {
+    return this.http.delete<any>(`${this.baseUrl}/extrato/${id}?empresaId=${empresaId}`);
   }
 
   conciliar(
@@ -55,8 +61,9 @@ export class BankingService {
     );
   }
 
-  listarConciliacoes(empresaId: string): Observable<ConciliacaoBancariaDTO[]> {
-    return this.http.get<ConciliacaoBancariaDTO[]>(`${this.baseUrl}/conciliacoes/${empresaId}`);
+  listarConciliacoes(empresaId: string, competencia?: string): Observable<ConciliacaoBancariaDTO[]> {
+    const url = `${this.baseUrl}/conciliacoes/${empresaId}` + (competencia ? `?competencia=${competencia}` : '');
+    return this.http.get<ConciliacaoBancariaDTO[]>(url);
   }
 
   desconciliar(conciliacaoId: string): Observable<any> {

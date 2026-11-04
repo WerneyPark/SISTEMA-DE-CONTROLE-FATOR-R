@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FatorRService } from '../../services/fator-r.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
-import { Empresa, SimulacaoTributaria, ProjecaoCenario } from '../../models/models';
+import { ContaReceberService, DadosNotaFiscalDTO } from '../../services/conta-receber.service';
+import { Empresa, SimulacaoTributaria, ProjecaoCenario, FaturamentoHistorico } from '../../models/models';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -19,17 +20,30 @@ export class SimuladorComponent implements OnInit, OnDestroy {
   projecoes: ProjecaoCenario[] = [];
   carregando = false;
   erro: string | null = null;
+  sucesso: string | null = null;
   subscription?: Subscription;
 
   // Formulário de competência geral (Simulador)
   anoReferencia: number = new Date().getFullYear();
   mesReferencia: number = new Date().getMonth() + 1;
 
-  // Formulários de Lançamento
-  mostrarFormLancamento = false;
-  lancamentoFaturamento = { ano: new Date().getFullYear(), mes: new Date().getMonth() + 1, valor: 0 };
-  lancamentoFolha = { ano: new Date().getFullYear(), mes: new Date().getMonth() + 1, valor: 0 };
-  lancamentoSucesso: string | null = null;
+  // Modal Inserir Dados para Simulação
+  mostrarModalInserirDados = false;
+  modalAno: number = new Date().getFullYear();
+  modalMes: number = new Date().getMonth() + 1;
+  modalFaturamento: number = 0;
+  modalFolha: number = 0;
+  modalErro: string | null = null;
+  salvandoDados = false;
+
+  // Modal Importação de XML NF-e direto no Simulador
+  mostrarModalXml = false;
+  arquivoXml: File | null = null;
+  carregandoPreview = false;
+  importandoXml = false;
+  previewDados: DadosNotaFiscalDTO | null = null;
+  atualizarFaturamento = true;
+  erroPreview = '';
 
   meses = [
     { valor: 1, nome: 'Janeiro' }, { valor: 2, nome: 'Fevereiro' },
@@ -42,11 +56,11 @@ export class SimuladorComponent implements OnInit, OnDestroy {
 
   constructor(
     private fatorRService: FatorRService,
-    private empresaContext: EmpresaContextService
+    private empresaContext: EmpresaContextService,
+    private contaReceberService: ContaReceberService
   ) {}
 
   ngOnInit(): void {
-    // Escuta a empresa selecionada globalmente
     this.subscription = this.empresaContext.empresaSelecionada$.subscribe(empresa => {
       this.empresaSelecionada = empresa;
       this.simulacao = null;
@@ -75,7 +89,6 @@ export class SimuladorComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.simulacao = data;
         
-        // Fetch future projections
         if (this.empresaSelecionada?.id) {
           this.fatorRService.simularFuturo(
             this.empresaSelecionada.id,
@@ -94,7 +107,7 @@ export class SimuladorComponent implements OnInit, OnDestroy {
           this.carregando = false;
         }
       },
-      error: (err) => {
+      error: () => {
         this.erro = 'Erro ao calcular simulação tributária.';
         this.carregando = false;
       }
@@ -108,48 +121,209 @@ export class SimuladorComponent implements OnInit, OnDestroy {
     if (this.empresaSelecionada) this.simular();
   }
 
-  toggleFormLancamento(): void {
-    this.mostrarFormLancamento = !this.mostrarFormLancamento;
-    this.lancamentoSucesso = null;
+  // ===================== SISTEMA DE ENCERRAMENTO =====================
+
+  isCompetenciaEncerrada(comp: string): boolean {
+    if (!this.simulacao?.competenciasEncerradas) return false;
+    return this.simulacao.competenciasEncerradas.includes(comp);
   }
 
-  salvarFaturamento(): void {
+  encerrarCompetencia(comp: string): void {
     if (!this.empresaSelecionada?.id) return;
-    
-    const competencia = `${this.lancamentoFaturamento.ano}-${this.lancamentoFaturamento.mes.toString().padStart(2, '0')}`;
-    
-    this.fatorRService.criarFaturamento({
-      empresaId: this.empresaSelecionada.id,
-      competencia: competencia,
-      valor: this.lancamentoFaturamento.valor
-    }).subscribe({
-      next: () => {
-        this.lancamentoSucesso = `Faturamento salvo com sucesso!`;
-        this.lancamentoFaturamento.valor = 0;
+    if (!confirm(`Deseja realmente encerrar a competência ${comp}? Os valores para este mês serão consolidados com base nos arquivos de importação (XML e eSocial) e novas alterações manuais serão bloqueadas.`)) {
+      return;
+    }
+
+    this.carregando = true;
+    this.erro = null;
+    this.sucesso = null;
+
+    this.fatorRService.encerrarCompetencia(this.empresaSelecionada.id, comp).subscribe({
+      next: (res) => {
+        this.sucesso = res.mensagem || `Competência ${comp} encerrada com sucesso!`;
         this.simular();
       },
-      error: () => this.erro = 'Erro ao salvar faturamento.'
+      error: (err) => {
+        this.carregando = false;
+        this.erro = err.error?.erro || 'Erro ao encerrar competência.';
+      }
     });
   }
 
-  salvarFolha(): void {
+  reabrirCompetencia(comp: string): void {
     if (!this.empresaSelecionada?.id) return;
-    
-    const competencia = `${this.lancamentoFolha.ano}-${this.lancamentoFolha.mes.toString().padStart(2, '0')}`;
-    
-    this.fatorRService.criarFolha({
-      empresaId: this.empresaSelecionada.id,
-      competencia: competencia,
-      valor: this.lancamentoFolha.valor
-    }).subscribe({
-      next: () => {
-        this.lancamentoSucesso = `Folha de Pagamento salva com sucesso!`;
-        this.lancamentoFolha.valor = 0;
+    if (!confirm(`Deseja reabrir a competência ${comp}? O mês voltará a permitir novos lançamentos e ajustes.`)) {
+      return;
+    }
+
+    this.carregando = true;
+    this.erro = null;
+    this.sucesso = null;
+
+    this.fatorRService.reabrirCompetencia(this.empresaSelecionada.id, comp).subscribe({
+      next: (res) => {
+        this.sucesso = res.mensagem || `Competência ${comp} reaberta com sucesso!`;
         this.simular();
       },
-      error: () => this.erro = 'Erro ao salvar folha de pagamento.'
+      error: (err) => {
+        this.carregando = false;
+        this.erro = err.error?.erro || 'Erro ao reabrir competência.';
+      }
     });
   }
+
+  // ===================== MODAL INSERIR DADOS =====================
+
+  abrirModalInserirDados(): void {
+    this.modalAno = this.anoReferencia;
+    this.modalMes = this.mesReferencia;
+    this.modalFaturamento = 0;
+    this.modalFolha = 0;
+    this.modalErro = null;
+
+    // Se houver valor no histórico para essa competência, pré-carrega
+    const comp = `${this.modalAno}-${this.modalMes.toString().padStart(2, '0')}`;
+    const hist = this.simulacao?.historicoFaturamentos?.find(h => h.competencia === comp);
+    if (hist) {
+      this.modalFaturamento = hist.faturamento;
+      this.modalFolha = hist.folhaPagamento;
+    }
+
+    this.mostrarModalInserirDados = true;
+  }
+
+  fecharModalInserirDados(): void {
+    this.mostrarModalInserirDados = false;
+    this.modalErro = null;
+  }
+
+  get modalCompetenciaFormatada(): string {
+    return `${this.modalAno}-${this.modalMes.toString().padStart(2, '0')}`;
+  }
+
+  get modalMesEncerrado(): boolean {
+    return this.isCompetenciaEncerrada(this.modalCompetenciaFormatada);
+  }
+
+  onModalCompetenciaChange(): void {
+    const comp = this.modalCompetenciaFormatada;
+    const hist = this.simulacao?.historicoFaturamentos?.find(h => h.competencia === comp);
+    if (hist) {
+      this.modalFaturamento = hist.faturamento;
+      this.modalFolha = hist.folhaPagamento;
+    } else {
+      this.modalFaturamento = 0;
+      this.modalFolha = 0;
+    }
+    this.modalErro = null;
+  }
+
+  salvarDadosSimulacao(): void {
+    if (!this.empresaSelecionada?.id) return;
+    if (this.modalMesEncerrado) {
+      this.modalErro = 'Este mês já está encerrado. Reabra a competência antes de alterar os valores.';
+      return;
+    }
+
+    this.salvandoDados = true;
+    this.modalErro = null;
+
+    const payload = {
+      competencia: this.modalCompetenciaFormatada,
+      valorFaturamento: this.modalFaturamento,
+      valorFolha: this.modalFolha
+    };
+
+    this.fatorRService.salvarDadosSimulacao(this.empresaSelecionada.id, payload).subscribe({
+      next: (res) => {
+        this.salvandoDados = false;
+        this.sucesso = res.mensagem || 'Dados de simulação salvos com sucesso!';
+        this.fecharModalInserirDados();
+        this.simular();
+      },
+      error: (err) => {
+        this.salvandoDados = false;
+        this.modalErro = err.error?.erro || 'Erro ao salvar dados de simulação.';
+      }
+    });
+  }
+
+  // ===================== MODAL IMPORTAR XML NO SIMULADOR =====================
+
+  abrirModalXml(): void {
+    this.mostrarModalXml = true;
+    this.arquivoXml = null;
+    this.previewDados = null;
+    this.erroPreview = '';
+    this.atualizarFaturamento = true;
+  }
+
+  fecharModalXml(): void {
+    this.mostrarModalXml = false;
+    this.arquivoXml = null;
+    this.previewDados = null;
+    this.erroPreview = '';
+    this.carregandoPreview = false;
+    this.importandoXml = false;
+  }
+
+  selecionarArquivoXml(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.arquivoXml = input.files[0];
+      this.obterPreview();
+    }
+  }
+
+  obterPreview(): void {
+    if (!this.arquivoXml || !this.empresaSelecionada) return;
+    const empresaIdStr = this.empresaSelecionada.uuidId || String(this.empresaSelecionada.id);
+
+    this.carregandoPreview = true;
+    this.erroPreview = '';
+    this.previewDados = null;
+
+    this.contaReceberService.previewXml(empresaIdStr, this.arquivoXml).subscribe({
+      next: dados => {
+        this.previewDados = dados;
+        this.carregandoPreview = false;
+        if (dados.periodoEncerrado) {
+          this.erroPreview = dados.mensagemAlertaPeriodo || 'Atenção: A data de emissão desta nota pertence a um período já encerrado. Abra o período para prosseguir.';
+        }
+      },
+      error: err => {
+        this.carregandoPreview = false;
+        this.erroPreview = err.error?.message || 'Erro ao processar pré-visualização do XML.';
+      }
+    });
+  }
+
+  confirmarImportacaoXml(): void {
+    if (!this.arquivoXml || !this.empresaSelecionada) return;
+    if (this.previewDados?.periodoEncerrado) {
+      this.erroPreview = 'Não é possível importar a nota em um período já encerrado. Abra a competência no Simulador antes de importar.';
+      return;
+    }
+
+    const empresaIdStr = this.empresaSelecionada.uuidId || String(this.empresaSelecionada.id);
+    this.importandoXml = true;
+    this.erroPreview = '';
+
+    this.contaReceberService.importarXml(empresaIdStr, this.arquivoXml, this.atualizarFaturamento).subscribe({
+      next: titulos => {
+        this.importandoXml = false;
+        this.sucesso = `Nota fiscal importada com sucesso: ${titulos.length} título(s) gerado(s) e Faturamento Mensal atualizado!`;
+        this.fecharModalXml();
+        this.simular();
+      },
+      error: err => {
+        this.importandoXml = false;
+        this.erroPreview = err.error?.message || err.error?.erro || 'Erro ao importar XML da nota fiscal.';
+      }
+    });
+  }
+
+  // ===================== FORMATADORES =====================
 
   getNomeMes(mes: number): string {
     return this.meses[mes - 1]?.nome || '';
@@ -169,7 +343,8 @@ export class SimuladorComponent implements OnInit, OnDestroy {
     return '#ef4444';
   }
 
-  formatCurrency(value: number): string {
+  formatCurrency(value?: number | null): string {
+    if (value === undefined || value === null) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   }
 }

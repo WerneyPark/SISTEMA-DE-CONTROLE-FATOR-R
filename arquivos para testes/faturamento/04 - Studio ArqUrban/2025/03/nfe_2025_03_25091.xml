@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35250328146141000136550010000250911002509199">
+      <ide>
+        <nNF>25091</nNF>
+        <dhEmi>2025-03-05T10:00:00-03:00</dhEmi>
+        <dVenc>2025-03-10</dVenc>
+      </ide>
+      <emit>
+        <CNPJ>28146141000136</CNPJ>
+        <xNome>Studio ArqUrban Arquitetura e Engenharia Ltda</xNome>
+        <xFant>Studio ArqUrban</xFant>
+      </emit>
+      <dest>
+        <CNPJ>47960950000121</CNPJ>
+        <xNome>Magazine Luiza SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>12000.00</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>

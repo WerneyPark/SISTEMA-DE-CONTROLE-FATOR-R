@@ -399,4 +399,33 @@ class BankingServiceTest {
         assertEquals(1, result.size());
         assertEquals("l-1", result.get(0).getId());
     }
+
+    @Test
+    @DisplayName("Deve importar arquivos gerados de extrato OFX e CSV com sucesso")
+    void deveImportarArquivosGeradosDeExtratoComSucesso() throws Exception {
+        java.io.File ofxFile = new java.io.File("../arquivos para testes/extrato bancario/01 - Inovar Softwares/2026/05/extrato_2026_05.ofx");
+        java.io.File csvFile = new java.io.File("../arquivos para testes/extrato bancario/01 - Inovar Softwares/2026/05/extrato_2026_05.csv");
+
+        if (ofxFile.exists() && csvFile.exists()) {
+            when(tenantResolverService.resolveCanonicalUuid(empresaUuid)).thenReturn(empresaUuid);
+            when(tenantResolverService.resolveEmpresa(empresaUuid)).thenReturn(empresaMock);
+            when(extratoLancamentoRepository.save(any(ExtratoLancamento.class))).thenAnswer(i -> i.getArgument(0));
+
+            // Testa OFX
+            byte[] ofxBytes = java.nio.file.Files.readAllBytes(ofxFile.toPath());
+            MockMultipartFile mfOfx = new MockMultipartFile("file", "extrato.ofx", "application/x-ofx", ofxBytes);
+            ImportExtratoResponseDTO respOfx = bankingService.importarOfx(mfOfx, empresaUuid);
+            assertNotNull(respOfx);
+            assertTrue(respOfx.isSucesso());
+            assertEquals(5, respOfx.getTotalLancamentos());
+
+            // Testa CSV
+            byte[] csvBytes = java.nio.file.Files.readAllBytes(csvFile.toPath());
+            MockMultipartFile mfCsv = new MockMultipartFile("file", "extrato.csv", "text/csv", csvBytes);
+            ImportExtratoResponseDTO respCsv = bankingService.importarCsv(mfCsv, empresaUuid);
+            assertNotNull(respCsv);
+            assertTrue(respCsv.isSucesso());
+            assertEquals(5, respCsv.getTotalLancamentos());
+        }
+    }
 }

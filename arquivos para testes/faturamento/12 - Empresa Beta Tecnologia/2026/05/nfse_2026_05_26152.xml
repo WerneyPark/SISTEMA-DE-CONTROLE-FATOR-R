@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35260598765000102000550010000261521002615299">
+    <nNFSe>26152</nNFSe>
+    <emit>
+      <CNPJ>98XYZ765000102</CNPJ>
+      <xNome>Empresa Beta Tecnologia</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2026-05-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2026-05-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>06057223000171</CNPJ>
+          <xNome>Sendas Distribuidora SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>17500.00</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35260128146158000193550010000260311002603199">
+      <ide>
+        <nNF>26031</nNF>
+        <dhEmi>2026-01-05T10:00:00-03:00</dhEmi>
+        <dVenc>2026-01-10</dVenc>
+      </ide>
+      <emit>
+        <CNPJ>28146158000193</CNPJ>
+        <xNome>Vertex Agência de Marketing Digital & Estratégia Ltda</xNome>
+        <xFant>Vertex Digital Agency</xFant>
+      </emit>
+      <dest>
+        <CNPJ>00000000000191</CNPJ>
+        <xNome>Banco do Brasil SA</xNome>
+      </dest>
+      <total>
+        <ICMSTot>
+          <vNF>10000.00</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>
