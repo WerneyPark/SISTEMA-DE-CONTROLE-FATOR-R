@@ -21,6 +21,11 @@ public class ProLaboreIdealDTO {
     private String anexoAtual;
     private BigDecimal faturamentoPrevisto;
     private BigDecimal folhaAtualSemProLabore;
+    private BigDecimal folhaSemProLabore12;
+    private BigDecimal proLaboreAtual12;
+    private BigDecimal folhaSemProLaboreMes;
+    private BigDecimal proLaboreAtualMes;
+    private BigDecimal diferencaParaAnexo3;
     private BigDecimal proLaboreMinimoParaAnexo3;
     private BigDecimal fatorRProjetado;
     private String anexoProjetado; // "Anexo III" ou "Anexo V"
@@ -28,10 +33,17 @@ public class ProLaboreIdealDTO {
     private BigDecimal inssSocio;
     private BigDecimal irpfSocio;
     private BigDecimal custoTributarioTotal;
+    private BigDecimal custoTributarioAnual;
     private BigDecimal aliquotaEfetivaAnexoV;
     private BigDecimal aliquotaEfetivaAnexoIII;
+    private BigDecimal impostoAnexoVMensal;
+    private BigDecimal impostoAnexoIIIMensal;
+    private BigDecimal impostoAnexoVAnual;
+    private BigDecimal impostoAnexoIIIAnual;
     private BigDecimal economiaSimplesNacional;
+    private BigDecimal economiaSimplesAnual;
     private BigDecimal saldoLiquidoVantagem;
+    private BigDecimal saldoLiquidoVantagemAnual;
     private boolean vantajoso;
     private String mensagemRecomendacao;
 

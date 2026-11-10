@@ -24,9 +24,11 @@ public class PayrollController {
     private final PayrollService payrollService;
 
     @GetMapping("/{empresaId}")
-    public ResponseEntity<List<FolhaDetalhada>> listarFolhas(@PathVariable String empresaId) {
+    public ResponseEntity<List<FolhaDetalhada>> listarFolhas(
+            @PathVariable String empresaId,
+            @RequestParam(required = false) String competencia) {
         try {
-            List<FolhaDetalhada> lista = payrollService.listFolhas(empresaId);
+            List<FolhaDetalhada> lista = payrollService.listFolhas(empresaId, competencia);
             return ResponseEntity.ok(lista);
         } catch (IllegalArgumentException e) {
             log.error("Erro ao listar folhas para empresa {}: {}", empresaId, e.getMessage());

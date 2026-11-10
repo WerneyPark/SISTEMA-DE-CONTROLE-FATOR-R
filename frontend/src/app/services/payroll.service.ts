@@ -42,8 +42,12 @@ export class PayrollService {
 
   constructor(private http: HttpClient) {}
 
-  listarFolhas(empresaId: string): Observable<FolhaDetalhadaDTO[]> {
-    return this.http.get<FolhaDetalhadaDTO[]>(`${this.baseUrl}/${empresaId}`);
+  listarFolhas(empresaId: string, competencia?: string): Observable<FolhaDetalhadaDTO[]> {
+    let url = `${this.baseUrl}/${empresaId}`;
+    if (competencia) {
+      url += `?competencia=${competencia}`;
+    }
+    return this.http.get<FolhaDetalhadaDTO[]>(url);
   }
 
   buscarPorCompetencia(empresaId: string, competencia: string): Observable<FolhaDetalhadaDTO> {

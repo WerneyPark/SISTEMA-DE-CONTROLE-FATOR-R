@@ -153,19 +153,26 @@ class PayrollServiceTest {
         assertEquals(0, new BigDecimal("12.00").compareTo(resultado.getFatorRAtual()));
         assertEquals("Anexo V", resultado.getAnexoAtual());
 
-        // Folha alvo: 28% de 100.000 = 28.000. Falta: 28.000 - 12.000 = 16.000
-        assertEquals(0, new BigDecimal("16000.00").compareTo(resultado.getProLaboreMinimoParaAnexo3()));
+        // Déficit acumulado nos 12 meses: 28.000 - 12.000 = 16.000
+        assertEquals(0, new BigDecimal("16000.00").compareTo(resultado.getDiferencaParaAnexo3()));
+        // Pró-labore mensal ideal para atingir 28% no mês: 10.000 * 28% = 2.800,00
+        assertEquals(0, new BigDecimal("2800.00").compareTo(resultado.getProLaboreMinimoParaAnexo3()));
         assertEquals(0, new BigDecimal("28.00").compareTo(resultado.getFatorRProjetado()));
         assertEquals("Anexo III", resultado.getAnexoProjetado());
 
-        // INSS sócio: 11% de 16.000 limitado ao teto 2026 (R$ 908,86)
-        assertEquals(0, new BigDecimal("908.86").compareTo(resultado.getInssSocio()));
+        // INSS sócio mensal: 11% de 2.800 = 308,00
+        assertEquals(0, new BigDecimal("308.00").compareTo(resultado.getInssSocio()));
 
-        // IRPF sócio: Base = 16.000 - 908.86 = 15.091,14. Tabela RFB > 4.664,68: 27.5% - 896.00 = 3.254,06
-        assertEquals(0, new BigDecimal("3254.06").compareTo(resultado.getIrpfSocio()));
+        // IRPF sócio mensal: Base = 2.800 - 308 = 2.492,00. 7.5% - 169.44 = 17,46
+        assertEquals(0, new BigDecimal("17.46").compareTo(resultado.getIrpfSocio()));
 
-        // Economia Simples Nacional: Anexo V (15.5%) vs Anexo III (6%) sobre R$ 10.000 = 9.5% = R$ 950,00
+        // Economia Simples Nacional: Anexo V (15.5% = R$ 1.550,00) vs Anexo III (6% = R$ 600,00) sobre R$ 10.000 = R$ 950,00
+        assertEquals(0, new BigDecimal("1550.00").compareTo(resultado.getImpostoAnexoVMensal()));
+        assertEquals(0, new BigDecimal("600.00").compareTo(resultado.getImpostoAnexoIIIMensal()));
         assertEquals(0, new BigDecimal("950.00").compareTo(resultado.getEconomiaSimplesNacional()));
+        // Saldo líquido de vantagem: 950.00 - 325.46 = 624.54
+        assertEquals(0, new BigDecimal("624.54").compareTo(resultado.getSaldoLiquidoVantagem()));
+        assertTrue(resultado.isVantajoso());
 
         assertNotNull(resultado.getMensagemRecomendacao());
     }
@@ -338,5 +345,33 @@ class PayrollServiceTest {
             assertTrue(respCsv.isSucesso());
             assertEquals("2026-05", respCsv.getCompetencia());
         }
+    }
+
+    @Test
+    void deveFiltrarFolhasApenasParaOs12MesesAnterioresAoMesSelecionado() {
+        when(tenantResolverService.resolveEmpresa(empresaUuid)).thenReturn(empresaMock);
+
+        // Cria folhas de 2025-01 a 2026-12 (24 meses)
+        List<FolhaDetalhada> todasAsFolhas = new ArrayList<>();
+        for (int ano = 2025; ano <= 2026; ano++) {
+            for (int mes = 1; mes <= 12; mes++) {
+                FolhaDetalhada f = new FolhaDetalhada();
+                f.setId("id-" + ano + "-" + mes);
+                f.setEmpresaId(empresaUuid);
+                f.setCompetencia(String.format("%04d-%02d", ano, mes));
+                f.setValorTotal(new BigDecimal("5000.00"));
+                todasAsFolhas.add(f);
+            }
+        }
+
+        when(folhaDetalhadaRepository.findByEmpresaId(empresaUuid)).thenReturn(todasAsFolhas);
+
+        // Act: Seleciona competência 2026-11 -> Deve retornar exatamente 12 meses: 2025-11 até 2026-10
+        List<FolhaDetalhada> filtradas = payrollService.listFolhas(empresaUuid, "2026-11");
+
+        // Assert
+        assertEquals(12, filtradas.size());
+        assertEquals("2026-10", filtradas.get(0).getCompetencia()); // mais recente (M-1)
+        assertEquals("2025-11", filtradas.get(11).getCompetencia()); // mais antiga (M-12)
     }
 }

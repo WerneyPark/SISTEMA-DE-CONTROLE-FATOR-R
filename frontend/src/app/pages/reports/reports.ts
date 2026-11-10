@@ -6,12 +6,7 @@ import { Subscription } from 'rxjs';
 import { ReportsService } from '../../services/reports.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
 import { Empresa } from '../../models/models';
-import {
-  TipoLaudo,
-  ParametrosEmissaoLaudoDTO,
-  LaudoTributarioDTO,
-  ValidacaoLaudoResponseDTO
-} from '../../shared/types/reports.types';
+import { ParametrosEmissaoLaudoDTO } from '../../shared/types/reports.types';
 
 @Component({
   selector: 'app-reports',
@@ -24,13 +19,9 @@ export class ReportsComponent implements OnInit, OnDestroy {
   empresaSelecionada: Empresa | null = null;
   private subEmpresa?: Subscription;
 
-  // Controle de Abas
-  abaAtiva: 'emissao' | 'historico' | 'validacao' = 'emissao';
-
   // Parâmetros de Emissão
   anoCompetencia: number = new Date().getFullYear();
   mesCompetencia: number = new Date().getMonth() + 1;
-  tipoLaudo: TipoLaudo = 'DOSSIE_COMPLETO';
   incluirProjecaoCenarios: boolean = true;
   incluirAssinaturaContador: boolean = true;
   observacaoPersonalizada: string = '';
@@ -38,22 +29,12 @@ export class ReportsComponent implements OnInit, OnDestroy {
   // Estados de Loading e Mensagens
   gerandoPdf = false;
   baixandoExcel = false;
-  carregandoHistorico = false;
-  validandoHash = false;
   mensagemSucesso: string | null = null;
   mensagemErro: string | null = null;
 
   // Pré-visualização Inline em PDF
   pdfPreviewUrl: SafeResourceUrl | null = null;
   private rawPdfUrl: string | null = null;
-
-  // Histórico de Laudos
-  historicoLaudos: LaudoTributarioDTO[] = [];
-
-  // Auditoria e Validação de Autenticidade
-  hashConsulta: string = '';
-  resultadoValidacao: ValidacaoLaudoResponseDTO | null = null;
-  consultaRealizada = false;
 
   meses = [
     { valor: 1, nome: '01 - Janeiro' },
@@ -70,29 +51,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
     { valor: 12, nome: '12 - Dezembro' }
   ];
 
-  tiposLaudo: { valor: TipoLaudo; label: string; descricao: string }[] = [
-    {
-      valor: 'DOSSIE_COMPLETO',
-      label: 'Dossiê Tributário Completo',
-      descricao: 'Laudo executivo, memória 12M, comparativo de regimes, parecer técnico e projeções'
-    },
-    {
-      valor: 'LAUDO_ENQUADRAMENTO_FATOR_R',
-      label: 'Laudo de Enquadramento do Fator R',
-      descricao: 'Enquadramento específico Anexo III vs Anexo V com parecer do contador'
-    },
-    {
-      valor: 'MEMORIA_CALCULO_12M',
-      label: 'Memória Analítica de Cálculo (12 Meses)',
-      descricao: 'Detalhamento mês a mês da janela deslizante com razão folha/faturamento'
-    },
-    {
-      valor: 'ESTUDO_COMPARATIVO_REGIMES',
-      label: 'Estudo Comparativo de Regimes',
-      descricao: 'Simples Nacional vs Lucro Presumido e cálculo de economia tributária'
-    }
-  ];
-
   constructor(
     private reportsService: ReportsService,
     private empresaContext: EmpresaContextService,
@@ -104,11 +62,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
       this.empresaSelecionada = empresa;
       this.limparMensagens();
       this.fecharPreviewPdf();
-      if (empresa) {
-        this.carregarHistorico();
-      } else {
-        this.historicoLaudos = [];
-      }
     });
   }
 
@@ -129,14 +82,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
     return `${this.anoCompetencia}-${mesStr}`;
   }
 
-  setAba(aba: 'emissao' | 'historico' | 'validacao'): void {
-    this.abaAtiva = aba;
-    this.limparMensagens();
-    if (aba === 'historico' && this.empresaSelecionada) {
-      this.carregarHistorico();
-    }
-  }
-
   gerarEVisualizarPdf(): void {
     const empId = this.empresaIdAtual;
     if (!empId) {
@@ -150,7 +95,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
     const params: ParametrosEmissaoLaudoDTO = {
       empresaId: empId,
       competencia: this.competenciaFormatada,
-      tipoLaudo: this.tipoLaudo,
+      tipoLaudo: 'DOSSIE_COMPLETO',
       formato: 'PDF',
       incluirProjecaoCenarios: this.incluirProjecaoCenarios,
       incluirAssinaturaContador: this.incluirAssinaturaContador,
@@ -164,7 +109,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
         this.rawPdfUrl = URL.createObjectURL(blob);
         this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.rawPdfUrl);
         this.mensagemSucesso = `Laudo PDF gerado com sucesso para a competência ${this.competenciaFormatada}!`;
-        this.carregarHistorico();
       },
       error: (err) => {
         this.gerandoPdf = false;
@@ -187,7 +131,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
     const params: ParametrosEmissaoLaudoDTO = {
       empresaId: empId,
       competencia: this.competenciaFormatada,
-      tipoLaudo: this.tipoLaudo,
+      tipoLaudo: 'DOSSIE_COMPLETO',
       formato: 'PDF',
       incluirProjecaoCenarios: this.incluirProjecaoCenarios,
       incluirAssinaturaContador: this.incluirAssinaturaContador,
@@ -199,7 +143,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
         this.gerandoPdf = false;
         this.dispararDownload(blob, `laudo-fator-r-${this.competenciaFormatada}.pdf`);
         this.mensagemSucesso = 'Download do laudo em PDF concluído.';
-        this.carregarHistorico();
       },
       error: (err) => {
         this.gerandoPdf = false;
@@ -222,7 +165,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
     const params: ParametrosEmissaoLaudoDTO = {
       empresaId: empId,
       competencia: this.competenciaFormatada,
-      tipoLaudo: this.tipoLaudo,
+      tipoLaudo: 'DOSSIE_COMPLETO',
       formato: 'EXCEL',
       incluirProjecaoCenarios: this.incluirProjecaoCenarios,
       incluirAssinaturaContador: this.incluirAssinaturaContador,
@@ -234,7 +177,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
         this.baixandoExcel = false;
         this.dispararDownload(blob, `fator-r-${this.competenciaFormatada}.xlsx`);
         this.mensagemSucesso = 'Planilha Excel (.xlsx) baixada com sucesso com abas e fórmulas dinâmicas.';
-        this.carregarHistorico();
       },
       error: (err) => {
         this.baixandoExcel = false;
@@ -242,78 +184,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
         console.error('Falha ao exportar Excel:', err);
       }
     });
-  }
-
-  carregarHistorico(): void {
-    const empId = this.empresaIdAtual;
-    if (!empId) return;
-
-    this.carregandoHistorico = true;
-    this.reportsService.listarHistorico(empId).subscribe({
-      next: (dados) => {
-        this.carregandoHistorico = false;
-        this.historicoLaudos = dados || [];
-      },
-      error: (err) => {
-        this.carregandoHistorico = false;
-        console.error('Erro ao listar histórico de laudos:', err);
-      }
-    });
-  }
-
-  baixarDoHistorico(laudo: LaudoTributarioDTO): void {
-    this.reportsService.downloadLaudo(laudo.id).subscribe({
-      next: (blob) => {
-        this.dispararDownload(blob, `laudo-${laudo.competencia}-${laudo.tipoLaudo}.pdf`);
-      },
-      error: (err) => {
-        this.mensagemErro = 'Erro ao baixar arquivo do histórico.';
-        console.error(err);
-      }
-    });
-  }
-
-  validarHashAutenticidade(): void {
-    if (!this.hashConsulta || !this.hashConsulta.trim()) {
-      this.mensagemErro = 'Informe o código Hash SHA-256 para consultar.';
-      return;
-    }
-
-    this.validandoHash = true;
-    this.consultaRealizada = false;
-    this.resultadoValidacao = null;
-    this.limparMensagens();
-
-    this.reportsService.validarAutenticidade(this.hashConsulta.trim()).subscribe({
-      next: (res) => {
-        this.validandoHash = false;
-        this.consultaRealizada = true;
-        this.resultadoValidacao = res;
-      },
-      error: (err) => {
-        this.validandoHash = false;
-        this.consultaRealizada = true;
-        this.resultadoValidacao = {
-          valido: false,
-          hashAutenticidade: this.hashConsulta,
-          dataEmissao: '',
-          empresaNome: '',
-          empresaCnpj: '',
-          contadorResponsavel: '',
-          crcContador: '',
-          competencia: '',
-          anexoEnquadrado: '',
-          percentualFatorR: 0
-        };
-        console.error('Erro ao validar hash:', err);
-      }
-    });
-  }
-
-  copiarHashParaValidacao(hash: string): void {
-    this.hashConsulta = hash;
-    this.setAba('validacao');
-    this.validarHashAutenticidade();
   }
 
   fecharPreviewPdf(): void {

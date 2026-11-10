@@ -231,22 +231,13 @@ public class ReportsService {
             Document document = new Document(PageSize.A4, 36, 36, 46, 46);
             PdfWriter writer = PdfWriter.getInstance(document, out);
 
-            // Adiciona Rodapé e Cabeçalho de página com hash e paginação
+            // Adiciona Rodapé e Cabeçalho de página com paginação
             writer.setPageEvent(new PdfPageEventHelper() {
                 @Override
                 public void onEndPage(PdfWriter writer, Document document) {
-                    PdfPTable footer = new PdfPTable(2);
+                    PdfPTable footer = new PdfPTable(1);
                     try {
                         footer.setTotalWidth(document.right() - document.left());
-                        footer.setWidths(new float[]{75, 25});
-                        
-                        Font fontHash = FontFactory.getFont(FontFactory.COURIER, 7, new Color(100, 116, 139));
-                        PdfPCell cellHash = new PdfPCell(new Phrase("Hash SHA-256: " + hashAutenticidade, fontHash));
-                        cellHash.setBorder(Rectangle.TOP);
-                        cellHash.setBorderColor(new Color(226, 232, 240));
-                        cellHash.setPaddingTop(5);
-                        footer.addCell(cellHash);
-
                         Font fontPag = FontFactory.getFont(FontFactory.HELVETICA, 8, new Color(100, 116, 139));
                         PdfPCell cellPag = new PdfPCell(new Phrase("Pág. " + writer.getPageNumber(), fontPag));
                         cellPag.setHorizontalAlignment(Element.ALIGN_RIGHT);
@@ -672,32 +663,6 @@ public class ReportsService {
             tableAss.addCell(cAss);
             doc.add(tableAss);
         }
-
-        // Bloco de Autenticidade Digital
-        PdfPTable tableAuth = new PdfPTable(1);
-        tableAuth.setWidthPercentage(100);
-        tableAuth.setSpacingBefore(8);
-
-        PdfPCell cellAuth = new PdfPCell();
-        cellAuth.setBackgroundColor(new Color(248, 250, 252));
-        cellAuth.setBorderColor(new Color(203, 213, 225));
-        cellAuth.setPadding(6);
-
-        Font fAuthTit = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 7, primaryBlue);
-        Font fAuthCode = FontFactory.getFont(FontFactory.COURIER_BOLD, 7, new Color(30, 41, 59));
-        Font fAuthSub = FontFactory.getFont(FontFactory.HELVETICA, 6, new Color(100, 116, 139));
-
-        Paragraph pAuthTit = new Paragraph("CERTIFICADO DE AUTENTICIDADE DIGITAL (PADRÃO SHA-256)", fAuthTit);
-        cellAuth.addElement(pAuthTit);
-
-        Paragraph pCode = new Paragraph(hashAutenticidade, fAuthCode);
-        cellAuth.addElement(pCode);
-
-        Paragraph pSub = new Paragraph("A verificação e integridade deste documento fiscal pode ser realizada no portal tributário informando a chave hash acima.", fAuthSub);
-        cellAuth.addElement(pSub);
-
-        tableAuth.addCell(cellAuth);
-        doc.add(tableAuth);
     }
 
     private void adicionarHeaderCell(PdfPTable table, String text, Font font, Color bg, Color border) {
@@ -773,7 +738,7 @@ public class ReportsService {
             sheet1.addMergedRegion(new CellRangeAddress(1, 1, 0, 3));
 
             Row r2 = sheet1.createRow(2);
-            r2.createCell(0).setCellValue("Competência: " + params.getCompetencia() + " | Hash: " + hashAutenticidade);
+            r2.createCell(0).setCellValue("Competência: " + params.getCompetencia());
             sheet1.addMergedRegion(new CellRangeAddress(2, 2, 0, 3));
 
             int rowIdx1 = 4;

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infNFSe Id="NFSe35260428146243000151550010000261221002612299">
+    <nNFSe>26122</nNFSe>
+    <emit>
+      <CNPJ>28146243000151</CNPJ>
+      <xNome>Clínica Veterinária e Diagnóstico AnimaVita Ltda</xNome>
+    </emit>
+    <DPS>
+      <infDPS>
+        <ide>
+          <dhEmi>2026-04-12T14:30:00-03:00</dhEmi>
+          <dataVencimento>2026-04-20</dataVencimento>
+        </ide>
+        <toma>
+          <CNPJ>33592510000154</CNPJ>
+          <xNome>Vale SA</xNome>
+        </toma>
+        <valores>
+          <vServPrest>
+            <vServ>11083.33</vServ>
+          </vServPrest>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>
+</NFSe>

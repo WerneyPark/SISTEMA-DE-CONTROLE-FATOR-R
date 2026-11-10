@@ -69,6 +69,11 @@ public class PayrollService {
 
     @Transactional(readOnly = true)
     public List<FolhaDetalhada> listFolhas(String empresaId) {
+        return listFolhas(empresaId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<FolhaDetalhada> listFolhas(String empresaId, String competenciaReferencia) {
         Empresa empresa = tenantResolverService.resolveEmpresa(empresaId);
         String uuid = empresa.getUuidId() != null ? empresa.getUuidId() : String.valueOf(empresa.getId());
         String numId = String.valueOf(empresa.getId());
@@ -81,6 +86,20 @@ public class PayrollService {
                     folhas.add(f);
                 }
             }
+        }
+
+        if (competenciaReferencia != null && !competenciaReferencia.isBlank()) {
+            YearMonth refYM = YearMonth.parse(normalizarCompetencia(competenciaReferencia));
+            YearMonth inicioYM = refYM.minusMonths(12);
+            YearMonth fimYM = refYM.minusMonths(1);
+            folhas.removeIf(f -> {
+                try {
+                    YearMonth ym = YearMonth.parse(normalizarCompetencia(f.getCompetencia()));
+                    return ym.isBefore(inicioYM) || ym.isAfter(fimYM);
+                } catch (Exception e) {
+                    return true;
+                }
+            });
         }
 
         folhas.sort(Comparator.comparing(FolhaDetalhada::getCompetencia).reversed());
@@ -659,7 +678,7 @@ public class PayrollService {
         Long empresaNumericId = empresa.getId();
         YearMonth competenciaYM = YearMonth.parse(normalizarCompetencia(competencia));
 
-        // Busca histórico dos últimos 12 meses anteriores à competência
+        // Busca histórico dos últimos 12 meses anteriores à competência: [M-12, M-1]
         YearMonth dataFim = competenciaYM.minusMonths(1);
         YearMonth dataInicio = competenciaYM.minusMonths(12);
 
@@ -674,7 +693,7 @@ public class PayrollService {
                 .map(FolhaPagamentoMensal::getValor)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Faturamento do mês da simulação
+        // Faturamento do mês da simulação (se não informado, busca do faturamento real do mês ou usa a média de 12 meses)
         BigDecimal faturamentoMes = faturamentoEstimado;
         if (faturamentoMes == null || faturamentoMes.compareTo(BigDecimal.ZERO) <= 0) {
             List<FaturamentoMensal> doMes = faturamentoRepository.findByEmpresaIdAndCompetencia(empresaNumericId, competenciaYM);
@@ -702,63 +721,111 @@ public class PayrollService {
             }
         }
 
-        // Cálculo da folha necessária para Fator R >= 28%
-        BigDecimal folhaAlvo = rbt12.multiply(FATOR_R_ALVO).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal proLaboreNecessario = BigDecimal.ZERO;
+        // Decomposição da Folha Analítica dos 12 meses anteriores [M-12, M-1]
+        List<FolhaDetalhada> folhasDetalhadas12M = listFolhas(empresaId, competencia);
+        BigDecimal somaSalariosEncargos12 = BigDecimal.ZERO;
+        BigDecimal somaProLabore12 = BigDecimal.ZERO;
 
-        if (totalFolha12.compareTo(folhaAlvo) < 0) {
-            proLaboreNecessario = folhaAlvo.subtract(totalFolha12).setScale(2, RoundingMode.HALF_UP);
+        for (FolhaDetalhada fd : folhasDetalhadas12M) {
+            BigDecimal salariosEnc = (fd.getValorSalarios() != null ? fd.getValorSalarios() : BigDecimal.ZERO)
+                    .add(fd.getValorDecimoTerceiro() != null ? fd.getValorDecimoTerceiro() : BigDecimal.ZERO)
+                    .add(fd.getValorInssPatronal() != null ? fd.getValorInssPatronal() : BigDecimal.ZERO)
+                    .add(fd.getValorFgts() != null ? fd.getValorFgts() : BigDecimal.ZERO);
+            somaSalariosEncargos12 = somaSalariosEncargos12.add(salariosEnc);
+            somaProLabore12 = somaProLabore12.add(fd.getValorProLabore() != null ? fd.getValorProLabore() : BigDecimal.ZERO);
+        }
+
+        // Se não houver detalhamento cadastrado mas houver folha mensal acumulada, assume pró-labore
+        if (somaSalariosEncargos12.compareTo(BigDecimal.ZERO) == 0 && somaProLabore12.compareTo(BigDecimal.ZERO) == 0) {
+            somaProLabore12 = totalFolha12;
+        }
+
+        BigDecimal folhaSemProLaboreMes = somaSalariosEncargos12.divide(new BigDecimal("12"), 2, RoundingMode.HALF_UP);
+        BigDecimal proLaboreAtualMes = somaProLabore12.divide(new BigDecimal("12"), 2, RoundingMode.HALF_UP);
+
+        // Meta de Folha Acumulada em 12 Meses (Fator R 28%)
+        BigDecimal folhaAlvo12 = rbt12.multiply(FATOR_R_ALVO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal diferencaParaAnexo3 = BigDecimal.ZERO;
+        if (totalFolha12.compareTo(folhaAlvo12) < 0) {
+            diferencaParaAnexo3 = folhaAlvo12.subtract(totalFolha12).setScale(2, RoundingMode.HALF_UP);
+        }
+
+        // Pró-Labore Mínimo Ideal Mensal para atingir 28% no Fator R (quando no Anexo V)
+        BigDecimal metaFolhaMensal = faturamentoMes.multiply(FATOR_R_ALVO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal proLaboreIdealMensal = BigDecimal.ZERO;
+        if (diferencaParaAnexo3.compareTo(BigDecimal.ZERO) > 0) {
+            proLaboreIdealMensal = metaFolhaMensal.subtract(folhaSemProLaboreMes);
+            if (proLaboreIdealMensal.compareTo(BigDecimal.ZERO) < 0) {
+                proLaboreIdealMensal = BigDecimal.ZERO;
+            }
+            proLaboreIdealMensal = proLaboreIdealMensal.setScale(2, RoundingMode.HALF_UP);
         }
 
         // Fator R Projetado
         BigDecimal fatorRProjetado = new BigDecimal("28.00");
-        if (proLaboreNecessario.compareTo(BigDecimal.ZERO) == 0 && fatorRAtual.compareTo(BigDecimal.ZERO) > 0) {
+        if (diferencaParaAnexo3.compareTo(BigDecimal.ZERO) == 0 && fatorRAtual.compareTo(BigDecimal.ZERO) > 0) {
             fatorRProjetado = fatorRAtual.setScale(2, RoundingMode.HALF_UP);
         }
 
-        // Cálculo Previdenciário (INSS do Sócio - 11% com teto 2026 de R$ 908,86 sobre base R$ 8.258,74)
+        // Alíquotas Efetivas do Simples Nacional: Anexo V vs Anexo III
+        ParametroTributario params = obterParametros(empresaNumericId);
+        BigDecimal aliqEfetivaV = calcularAliquotaEfetivaSimples(rbt12, "V", params);
+        BigDecimal aliqEfetivaIII = calcularAliquotaEfetivaSimples(rbt12, "III", params);
+
+        // Impostos Simples Nacional (Mensal e 12 Meses)
+        BigDecimal impostoAnexoVMensal = faturamentoMes.multiply(aliqEfetivaV).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal impostoAnexoIIIMensal = faturamentoMes.multiply(aliqEfetivaIII).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal impostoAnexoVAnual = rbt12.multiply(aliqEfetivaV).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal impostoAnexoIIIAnual = rbt12.multiply(aliqEfetivaIII).setScale(2, RoundingMode.HALF_UP);
+
+        // Economia Tributária no Simples Nacional
+        BigDecimal economiaSimplesNacional = impostoAnexoVMensal.subtract(impostoAnexoIIIMensal);
+        if (economiaSimplesNacional.compareTo(BigDecimal.ZERO) < 0) {
+            economiaSimplesNacional = BigDecimal.ZERO;
+        }
+        BigDecimal economiaSimplesAnual = impostoAnexoVAnual.subtract(impostoAnexoIIIAnual);
+        if (economiaSimplesAnual.compareTo(BigDecimal.ZERO) < 0) {
+            economiaSimplesAnual = BigDecimal.ZERO;
+        }
+
+        // Encargos da Pessoa Física (INSS do Sócio 11% + IRRF) sobre o Pró-Labore Mínimo Ideal Mensal
         BigDecimal inssSocio = BigDecimal.ZERO;
-        if (proLaboreNecessario.compareTo(BigDecimal.ZERO) > 0) {
-            if (proLaboreNecessario.compareTo(TETO_BASE_INSS_2026) >= 0) {
+        if (proLaboreIdealMensal.compareTo(BigDecimal.ZERO) > 0) {
+            if (proLaboreIdealMensal.compareTo(TETO_BASE_INSS_2026) >= 0) {
                 inssSocio = TETO_VALOR_INSS_2026;
             } else {
-                inssSocio = proLaboreNecessario.multiply(ALIQUOTA_INSS_SOCIO).setScale(2, RoundingMode.HALF_UP);
+                inssSocio = proLaboreIdealMensal.multiply(ALIQUOTA_INSS_SOCIO).setScale(2, RoundingMode.HALF_UP);
                 if (inssSocio.compareTo(TETO_VALOR_INSS_2026) > 0) {
                     inssSocio = TETO_VALOR_INSS_2026;
                 }
             }
         }
 
-        // Cálculo do IRPF Retido na Fonte (IRRF) sobre Pró-Labore Adicional (Base = Pró-labore - INSS)
-        BigDecimal baseIrpf = proLaboreNecessario.subtract(inssSocio);
+        BigDecimal baseIrpf = proLaboreIdealMensal.subtract(inssSocio);
         BigDecimal irpfSocio = calcularIrpfRetido(baseIrpf);
         BigDecimal custoTributarioTotal = inssSocio.add(irpfSocio).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal custoTributarioAnual = custoTributarioTotal.multiply(new BigDecimal("12")).setScale(2, RoundingMode.HALF_UP);
 
-        // Alíquotas Efetivas Simples Nacional: Anexo V vs Anexo III
-        ParametroTributario params = obterParametros(empresaNumericId);
-        BigDecimal aliqEfetivaV = calcularAliquotaEfetivaSimples(rbt12, "V", params);
-        BigDecimal aliqEfetivaIII = calcularAliquotaEfetivaSimples(rbt12, "III", params);
-
-        // Economia Tributária Simples Nacional = (Aliq V - Aliq III) * Faturamento do Mês
-        BigDecimal diferencaAliquotas = aliqEfetivaV.subtract(aliqEfetivaIII);
-        if (diferencaAliquotas.compareTo(BigDecimal.ZERO) < 0) {
-            diferencaAliquotas = BigDecimal.ZERO;
-        }
-        BigDecimal economiaSimplesNacional = faturamentoMes.multiply(diferencaAliquotas).setScale(2, RoundingMode.HALF_UP);
-
-        // Saldo Líquido de Vantagem = Economia Simples Nacional - Custo Tributário Adicional (INSS + IRPF)
+        // Vantagem Líquida (Economia no DAS Simples Nacional - Custos Tributários PF)
         BigDecimal saldoLiquidoVantagem = economiaSimplesNacional.subtract(custoTributarioTotal).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal saldoLiquidoVantagemAnual = economiaSimplesAnual.subtract(custoTributarioAnual).setScale(2, RoundingMode.HALF_UP);
         boolean vantajoso = saldoLiquidoVantagem.compareTo(BigDecimal.ZERO) > 0;
 
         String recomendacao;
-        if (proLaboreNecessario.compareTo(BigDecimal.ZERO) == 0) {
-            recomendacao = "A empresa já atinge a margem de 28% no Fator R (" + fatorRAtual.setScale(2, RoundingMode.HALF_UP) + "%), estando enquadrada no Anexo III sem necessidade de aporte de pró-labore adicional.";
+        if ("Anexo III".equals(anexoAtual)) {
+            recomendacao = String.format("A empresa já atinge a margem de 28%% no Fator R (%s%%), garantindo tributação favorável no Anexo III. " +
+                    "Para manter o enquadramento, recomenda-se manter a retirada de pró-labore mensal em ao menos R$ %,.2f.",
+                    fatorRAtual.setScale(2, RoundingMode.HALF_UP), proLaboreIdealMensal);
         } else if (vantajoso) {
-            recomendacao = String.format("Altamente Vantajoso! Retirar pró-labore de R$ %,.2f gera economia no DAS de R$ %,.2f contra um custo de R$ %,.2f em impostos pessoais (INSS + IRPF), resultando em lucro líquido extra de R$ %,.2f no mês.",
-                    proLaboreNecessario, economiaSimplesNacional, custoTributarioTotal, saldoLiquidoVantagem);
+            recomendacao = String.format("Altamente Vantajoso! O imposto no Anexo V (R$ %,.2f/mês) é praticamente o dobro do Anexo III (R$ %,.2f/mês). " +
+                    "A retirada de pró-labore mensal de R$ %,.2f gera economia no Simples de R$ %,.2f/mês (R$ %,.2f/ano) contra um custo PF de R$ %,.2f/mês, " +
+                    "resultando em lucro líquido real de R$ %,.2f no mês (R$ %,.2f ao ano).",
+                    impostoAnexoVMensal, impostoAnexoIIIMensal, proLaboreIdealMensal, economiaSimplesNacional, economiaSimplesAnual,
+                    custoTributarioTotal, saldoLiquidoVantagem, saldoLiquidoVantagemAnual);
         } else {
-            recomendacao = String.format("Atenção: Para esta faixa de faturamento, o custo dos encargos da pessoa física (R$ %,.2f) supera a economia gerada no Simples Nacional (R$ %,.2f). Saldo negativo de R$ %,.2f.",
-                    custoTributarioTotal, economiaSimplesNacional, saldoLiquidoVantagem);
+            recomendacao = String.format("Atenção: A migração do Anexo V (R$ %,.2f) para o Anexo III (R$ %,.2f) gera economia no DAS de R$ %,.2f/mês. " +
+                    "Porém, para este nível de faturamento, o custo dos encargos da pessoa física (R$ %,.2f/mês) supera a economia tributária em R$ %,.2f.",
+                    impostoAnexoVMensal, impostoAnexoIIIMensal, economiaSimplesNacional, custoTributarioTotal, saldoLiquidoVantagem.abs());
         }
 
         ProLaboreIdealDTO.CustoTributarioAdicionalDTO custoDTO = ProLaboreIdealDTO.CustoTributarioAdicionalDTO.builder()
@@ -773,21 +840,33 @@ public class PayrollService {
                 .competencia(competenciaYM.toString())
                 .rbt12(rbt12.setScale(2, RoundingMode.HALF_UP))
                 .folha12Atual(totalFolha12.setScale(2, RoundingMode.HALF_UP))
+                .folhaSemProLabore12(somaSalariosEncargos12.setScale(2, RoundingMode.HALF_UP))
+                .proLaboreAtual12(somaProLabore12.setScale(2, RoundingMode.HALF_UP))
+                .folhaSemProLaboreMes(folhaSemProLaboreMes)
+                .proLaboreAtualMes(proLaboreAtualMes)
+                .diferencaParaAnexo3(diferencaParaAnexo3)
                 .fatorRAtual(fatorRAtual.setScale(2, RoundingMode.HALF_UP))
                 .anexoAtual(anexoAtual)
                 .faturamentoPrevisto(faturamentoMes.setScale(2, RoundingMode.HALF_UP))
-                .folhaAtualSemProLabore(totalFolha12.setScale(2, RoundingMode.HALF_UP))
-                .proLaboreMinimoParaAnexo3(proLaboreNecessario)
+                .folhaAtualSemProLabore(somaSalariosEncargos12.setScale(2, RoundingMode.HALF_UP))
+                .proLaboreMinimoParaAnexo3(proLaboreIdealMensal)
                 .fatorRProjetado(fatorRProjetado)
                 .anexoProjetado("Anexo III")
                 .custoTributarioAdicional(custoDTO)
                 .inssSocio(inssSocio)
                 .irpfSocio(irpfSocio)
                 .custoTributarioTotal(custoTributarioTotal)
+                .custoTributarioAnual(custoTributarioAnual)
                 .aliquotaEfetivaAnexoV(aliqEfetivaV.multiply(new BigDecimal("100")).setScale(2, RoundingMode.HALF_UP))
                 .aliquotaEfetivaAnexoIII(aliqEfetivaIII.multiply(new BigDecimal("100")).setScale(2, RoundingMode.HALF_UP))
+                .impostoAnexoVMensal(impostoAnexoVMensal)
+                .impostoAnexoIIIMensal(impostoAnexoIIIMensal)
+                .impostoAnexoVAnual(impostoAnexoVAnual)
+                .impostoAnexoIIIAnual(impostoAnexoIIIAnual)
                 .economiaSimplesNacional(economiaSimplesNacional)
+                .economiaSimplesAnual(economiaSimplesAnual)
                 .saldoLiquidoVantagem(saldoLiquidoVantagem)
+                .saldoLiquidoVantagemAnual(saldoLiquidoVantagemAnual)
                 .vantajoso(vantajoso)
                 .mensagemRecomendacao(recomendacao)
                 .build();

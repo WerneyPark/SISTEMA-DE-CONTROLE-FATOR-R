@@ -400,7 +400,6 @@ public class ContaReceberService {
         existente.setValorTotal(dados.getValorTotal());
         existente.setDataEmissao(dados.getDataEmissao());
         existente.setDataVencimento(dados.getDataVencimento());
-        existente.setObservacao(dados.getObservacao());
         existente.setUpdatedAt(LocalDateTime.now());
 
         return repository.save(existente);

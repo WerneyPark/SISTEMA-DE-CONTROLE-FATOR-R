@@ -9,10 +9,7 @@ import {
   ImportFolhaFullResponseDTO
 } from '../../services/payroll.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
-import {
-  FolhaDetalhadaDTO,
-  CreateFolhaDetalhadaDTO
-} from '../../shared/types/payroll.types';
+import { FolhaDetalhadaDTO } from '../../shared/types/payroll.types';
 
 @Component({
   selector: 'app-payroll',
@@ -26,35 +23,39 @@ export class PayrollComponent implements OnInit, OnDestroy {
   loading = false;
   importando = false;
   calculando = false;
-  salvando = false;
 
   empresaId: string | null = null;
   empresaNome = '';
 
-  abaAtiva: 'tabela' | 'importador' | 'simulador' | 'manual' = 'tabela';
+  abaAtiva: 'tabela' | 'importador' | 'simulador' = 'tabela';
 
   mensagemSucesso = '';
   mensagemErro = '';
+
+  // Competência de Referência (idêntico ao Simulador Fator R)
+  anoReferencia: number = new Date().getFullYear();
+  mesReferencia: number = new Date().getMonth() + 1;
+
+  meses = [
+    { valor: 1, nome: '01 - Janeiro' },
+    { valor: 2, nome: '02 - Fevereiro' },
+    { valor: 3, nome: '03 - Março' },
+    { valor: 4, nome: '04 - Abril' },
+    { valor: 5, nome: '05 - Maio' },
+    { valor: 6, nome: '06 - Junho' },
+    { valor: 7, nome: '07 - Julho' },
+    { valor: 8, nome: '08 - Agosto' },
+    { valor: 9, nome: '09 - Setembro' },
+    { valor: 10, nome: '10 - Outubro' },
+    { valor: 11, nome: '11 - Novembro' },
+    { valor: 12, nome: '12 - Dezembro' }
+  ];
 
   // Último resultado de importação
   ultimoResultadoImportacao: ImportFolhaFullResponseDTO | null = null;
 
   // Simulador de Pró-Labore Ideal
-  competenciaSimulacao: string = this.getMesAtual();
-  faturamentoSimulacao = 25000;
   proLaboreIdeal: ProLaboreIdealFullDTO | null = null;
-
-  // Cadastro Manual
-  formManual: CreateFolhaDetalhadaDTO = {
-    empresaId: '',
-    competencia: this.getMesAtual(),
-    valorSalarios: 0,
-    valorProLabore: 0,
-    valorDecimoTerceiro: 0,
-    valorInssPatronal: 0,
-    valorFgts: 0,
-    origem: 'MANUAL'
-  };
 
   private destroy$ = new Subject<void>();
 
@@ -71,7 +72,6 @@ export class PayrollComponent implements OnInit, OnDestroy {
         this.empresaNome = empresa?.razaoSocial || '';
 
         if (this.empresaId) {
-          this.formManual.empresaId = this.empresaId;
           this.mensagemErro = '';
           this.carregarFolhas();
           this.executarSimulacao();
@@ -88,7 +88,41 @@ export class PayrollComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  setAba(aba: 'tabela' | 'importador' | 'simulador' | 'manual'): void {
+  get competenciaFormatada(): string {
+    const m = String(this.mesReferencia).padStart(2, '0');
+    return `${this.anoReferencia}-${m}`;
+  }
+
+  get periodo12MesesTexto(): string {
+    // 12 meses anteriores: M-12 até M-1
+    let anoInicio = this.anoReferencia - 1;
+    let mesInicio = this.mesReferencia;
+    let anoFim = this.anoReferencia;
+    let mesFim = this.mesReferencia - 1;
+    if (mesFim === 0) {
+      mesFim = 12;
+      anoFim = this.anoReferencia - 1;
+    }
+    const inicioStr = `${String(mesInicio).padStart(2, '0')}/${anoInicio}`;
+    const fimStr = `${String(mesFim).padStart(2, '0')}/${anoFim}`;
+    return `${inicioStr} a ${fimStr}`;
+  }
+
+  onCompetenciaChange(): void {
+    if (this.empresaId) {
+      this.carregarFolhas();
+      this.executarSimulacao();
+    }
+  }
+
+  usarCompetenciaAtual(): void {
+    const d = new Date();
+    this.anoReferencia = d.getFullYear();
+    this.mesReferencia = d.getMonth() + 1;
+    this.onCompetenciaChange();
+  }
+
+  setAba(aba: 'tabela' | 'importador' | 'simulador'): void {
     this.abaAtiva = aba;
     this.mensagemErro = '';
     this.mensagemSucesso = '';
@@ -100,7 +134,7 @@ export class PayrollComponent implements OnInit, OnDestroy {
   carregarFolhas(): void {
     if (!this.empresaId) return;
     this.loading = true;
-    this.payrollService.listarFolhas(this.empresaId)
+    this.payrollService.listarFolhas(this.empresaId, this.competenciaFormatada)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: folhas => {
@@ -164,8 +198,7 @@ export class PayrollComponent implements OnInit, OnDestroy {
     this.calculando = true;
     this.payrollService.calcularProLaboreIdeal(
       this.empresaId,
-      this.competenciaSimulacao,
-      this.faturamentoSimulacao
+      this.competenciaFormatada
     )
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -176,60 +209,6 @@ export class PayrollComponent implements OnInit, OnDestroy {
         error: err => {
           this.calculando = false;
           this.mensagemErro = 'Falha ao calcular Pró-Labore Ideal: ' + (err.error?.erro || err.message);
-        }
-      });
-  }
-
-  onFaturamentoChange(valor: number): void {
-    this.faturamentoSimulacao = valor;
-    this.executarSimulacao();
-  }
-
-  onCompetenciaSimulacaoChange(comp: string): void {
-    this.competenciaSimulacao = comp;
-    this.executarSimulacao();
-  }
-
-  // ==========================================
-  // CADASTRO MANUAL DE FOLHA
-  // ==========================================
-
-  get totalManual(): number {
-    return (Number(this.formManual.valorSalarios) || 0) +
-           (Number(this.formManual.valorProLabore) || 0) +
-           (Number(this.formManual.valorDecimoTerceiro) || 0) +
-           (Number(this.formManual.valorInssPatronal) || 0) +
-           (Number(this.formManual.valorFgts) || 0);
-  }
-
-  salvarFolhaManual(): void {
-    if (!this.empresaId) {
-      this.mensagemErro = 'Selecione uma empresa para salvar a folha.';
-      return;
-    }
-    if (!this.formManual.competencia) {
-      this.mensagemErro = 'Informe a competência (AAAA-MM).';
-      return;
-    }
-
-    this.salvando = true;
-    this.mensagemErro = '';
-    this.mensagemSucesso = '';
-
-    this.formManual.empresaId = this.empresaId;
-    this.payrollService.salvarFolha(this.formManual)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: salva => {
-          this.salvando = false;
-          this.mensagemSucesso = `Folha da competência ${salva.competencia} salva com sucesso e sincronizada com o cálculo do Fator R!`;
-          this.carregarFolhas();
-          this.executarSimulacao();
-          this.setAba('tabela');
-        },
-        error: err => {
-          this.salvando = false;
-          this.mensagemErro = 'Falha ao salvar folha manual: ' + (err.error?.erro || err.message);
         }
       });
   }
@@ -272,13 +251,6 @@ export class PayrollComponent implements OnInit, OnDestroy {
       return `${parts[1]}/${parts[0]}`;
     }
     return comp;
-  }
-
-  getMesAtual(): string {
-    const d = new Date();
-    const ano = d.getFullYear();
-    const mes = String(d.getMonth() + 1).padStart(2, '0');
-    return `${ano}-${mes}`;
   }
 
   getTotalFolhasSalarios(): number {

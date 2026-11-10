@@ -27,10 +27,45 @@
     </div>
   </div>
 
+  <!-- Barra de Competência de Referência e Janela 12M -->
+  <div class="card-painel competencia-bar">
+    <div class="competencia-bar-header">
+      <div class="competencia-bar-title">
+        <div class="competencia-icon">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="competencia-heading">Competência de Referência: {{ formatarCompetencia(competenciaFormatada) }}</h3>
+          <span class="periodo-12m-badge">Janela Base Fator R (12 Meses Anteriores): <strong>{{ periodo12MesesTexto }}</strong></span>
+        </div>
+      </div>
+      <div class="competencia-controls">
+        <div class="selector-unit">
+          <label>Mês</label>
+          <select class="form-control-compact" [(ngModel)]="mesReferencia" (change)="onCompetenciaChange()">
+            <option *ngFor="let m of meses" [value]="m.valor">{{ m.nome }}</option>
+          </select>
+        </div>
+        <div class="selector-unit">
+          <label>Ano</label>
+          <input type="number" class="form-control-compact input-ano" [(ngModel)]="anoReferencia" (change)="onCompetenciaChange()" min="2020" max="2030" />
+        </div>
+        <button class="btn btn-outline-sm btn-mes-atual" (click)="usarCompetenciaAtual()">
+          Mês Atual
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Navegação por Abas -->
   <div class="tabs-nav">
     <button class="tab-btn" [class.active]="abaAtiva === 'tabela'" (click)="setAba('tabela')">
-      <span>Folhas Detalhadas</span>
+      <span>Folhas Detalhadas (12M)</span>
       <span class="tab-badge">{{ folhas.length }}</span>
     </button>
     <button class="tab-btn" [class.active]="abaAtiva === 'importador'" (click)="setAba('importador')">
@@ -39,9 +74,6 @@
     <button class="tab-btn" [class.active]="abaAtiva === 'simulador'" (click)="setAba('simulador')">
       <span>Simulador de Pró-Labore Ideal</span>
       <span class="tab-badge badge-destaque">Fator R 28%</span>
-    </button>
-    <button class="tab-btn" [class.active]="abaAtiva === 'manual'" (click)="setAba('manual')">
-      <span>Lançamento Manual</span>
     </button>
   </div>
 
@@ -61,28 +93,28 @@
   </div>
 
   <!-- ======================================================== -->
-  <!-- ABA 1: TABELA ANALÍTICA DE FOLHAS                        -->
+  <!-- ABA 1: TABELA ANALÍTICA DE FOLHAS (12 MESES)             -->
   <!-- ======================================================== -->
   <div *ngIf="abaAtiva === 'tabela'">
-    <!-- Resumo dos Indicadores -->
+    <!-- Resumo dos Indicadores (12 Meses) -->
     <div class="metrics-grid" *ngIf="folhas.length > 0">
       <div class="metric-card">
-        <span class="metric-label">Total Salários CLT</span>
+        <span class="metric-label">Total Salários CLT (12M)</span>
         <span class="metric-value">{{ formatarMoeda(getTotalFolhasSalarios()) }}</span>
-        <span class="metric-sub">Remuneração CLT</span>
+        <span class="metric-sub">Janela: {{ periodo12MesesTexto }}</span>
       </div>
       <div class="metric-card">
-        <span class="metric-label">Total Pró-Labore</span>
+        <span class="metric-label">Total Pró-Labore (12M)</span>
         <span class="metric-value text-cyan">{{ formatarMoeda(getTotalFolhasProLabore()) }}</span>
         <span class="metric-sub">Retirada de Sócios</span>
       </div>
       <div class="metric-card">
-        <span class="metric-label">Encargos Patronais</span>
+        <span class="metric-label">Encargos Patronais (12M)</span>
         <span class="metric-value text-amber">{{ formatarMoeda(getTotalFolhasEncargos()) }}</span>
         <span class="metric-sub">INSS Patronal + FGTS</span>
       </div>
       <div class="metric-card card-total">
-        <span class="metric-label">Folha Total Acumulada</span>
+        <span class="metric-label">Folha Total Acumulada (12M)</span>
         <span class="metric-value text-emerald">{{ formatarMoeda(getTotalFolhasGeral()) }}</span>
         <span class="metric-sub">Base Oficial Fator R</span>
       </div>
@@ -92,8 +124,8 @@
     <div class="card-painel">
       <div class="painel-header">
         <div class="painel-title">
-          <h3>Histórico de Folhas Analíticas</h3>
-          <p class="subtitle">Registros detalhados utilizados no cômputo da folha de pagamento para o Fator R</p>
+          <h3>Histórico da Janela Deslizante ({{ periodo12MesesTexto }})</h3>
+          <p class="subtitle">12 meses analíticos utilizados no cômputo da folha de pagamento para apuração do Fator R</p>
         </div>
         <button class="btn btn-outline-sm" (click)="carregarFolhas()" [disabled]="loading">
           <svg class="btn-icon" [class.anim-spin]="loading" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -110,11 +142,10 @@
 
       <div *ngIf="!loading && folhas.length === 0" class="empty-state">
         <div class="empty-icon">📁</div>
-        <h4>Nenhuma folha detalhada cadastrada</h4>
-        <p>Importe arquivos de remuneração do eSocial (XML) ou planilhas analíticas do seu ERP contábil para começar.</p>
+        <h4>Nenhuma folha detalhada encontrada para este período</h4>
+        <p>Importe arquivos de remuneração do eSocial (XML) ou planilhas analíticas do seu ERP contábil para o intervalo {{ periodo12MesesTexto }}.</p>
         <div class="empty-actions">
-          <button class="btn btn-secondary" (click)="setAba('importador')">Importar eSocial / CSV</button>
-          <button class="btn btn-primary" (click)="setAba('manual')">Cadastrar Folha Manual</button>
+          <button class="btn btn-primary" (click)="setAba('importador')">Importar eSocial / CSV</button>
         </div>
       </div>
 
@@ -297,75 +328,60 @@
   </div>
 
   <!-- ======================================================== -->
-  <!-- ABA 3: SIMULADOR INTERATIVO DE PRÓ-LABORE IDEAL (28%)    -->
+  <!-- ABA 3: SIMULADOR DE PRÓ-LABORE IDEAL (FATOR R 28%)       -->
   <!-- ======================================================== -->
   <div *ngIf="abaAtiva === 'simulador'">
     <div class="simulador-grid">
-      <!-- Painel de Controles -->
+      <!-- Painel de Base Real Apurada -->
       <div class="card-painel simulador-controles">
         <div class="painel-header">
           <div>
-            <h3>Parâmetros de Simulação</h3>
-            <p class="subtitle">Ajuste o faturamento projetado para calcular a meta exata de 28% no Fator R</p>
+            <h3>Base Real Apurada (12 Meses)</h3>
+            <p class="subtitle">Dados consolidados a partir dos documentos fiscais e folhas importadas para a competência selecionada</p>
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Competência de Cálculo</label>
-          <input
-            type="month"
-            class="form-control"
-            [ngModel]="competenciaSimulacao"
-            (ngModelChange)="onCompetenciaSimulacaoChange($event)"
-          />
-        </div>
-
-        <div class="form-group mt-3">
-          <div class="label-with-val">
-            <label>Faturamento Mensal Previsto</label>
-            <span class="val-destaque">{{ formatarMoeda(faturamentoSimulacao) }}</span>
-          </div>
-
-          <input
-            type="range"
-            class="range-slider"
-            min="1000"
-            max="150000"
-            step="1000"
-            [ngModel]="faturamentoSimulacao"
-            (ngModelChange)="onFaturamentoChange($event)"
-          />
-
-          <div class="range-marks">
-            <span>R$ 1.000</span>
-            <span>R$ 50.000</span>
-            <span>R$ 100.000</span>
-            <span>R$ 150.000</span>
-          </div>
-
-          <div class="quick-buttons">
-            <button class="btn-chip" (click)="onFaturamentoChange(10000)">R$ 10.000</button>
-            <button class="btn-chip" (click)="onFaturamentoChange(25000)">R$ 25.000</button>
-            <button class="btn-chip" (click)="onFaturamentoChange(50000)">R$ 50.000</button>
-            <button class="btn-chip" (click)="onFaturamentoChange(80000)">R$ 80.000</button>
-            <button class="btn-chip" (click)="onFaturamentoChange(120000)">R$ 120.000</button>
-          </div>
-        </div>
-
-        <div class="base-info-box mt-4">
+        <div class="base-info-box">
           <div class="info-row">
-            <span>Receita Acumulada 12 Meses (RBT12):</span>
+            <span>Competência de Análise:</span>
+            <strong>{{ formatarCompetencia(competenciaFormatada) }}</strong>
+          </div>
+          <div class="info-row">
+            <span>Período Analisado (12M):</span>
+            <span class="text-main font-semibold">{{ periodo12MesesTexto }}</span>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-row">
+            <span>Receita Acumulada 12M (RBT12):</span>
             <strong>{{ formatarMoeda(proLaboreIdeal?.rbt12) }}</strong>
           </div>
           <div class="info-row">
-            <span>Folha Acumulada 12 Meses:</span>
-            <strong>{{ formatarMoeda(proLaboreIdeal?.folha12Atual) }}</strong>
+            <span>Faturamento Base do Mês:</span>
+            <span class="text-blue font-semibold">{{ formatarMoeda(proLaboreIdeal?.faturamentoPrevisto) }}</span>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-row">
+            <span>Folha CLT + Encargos (12M):</span>
+            <span>{{ formatarMoeda(proLaboreIdeal?.folhaSemProLabore12) }}</span>
           </div>
           <div class="info-row">
+            <span>Pró-Labore Atual dos Sócios (12M):</span>
+            <span>{{ formatarMoeda(proLaboreIdeal?.proLaboreAtual12) }}</span>
+          </div>
+          <div class="info-row">
+            <span>Folha Total Acumulada (12M):</span>
+            <strong>{{ formatarMoeda(proLaboreIdeal?.folha12Atual) }}</strong>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-row highlight-row">
             <span>Fator R Atual:</span>
-            <span [class.text-emerald]="(proLaboreIdeal?.fatorRAtual || 0) >= 28" [class.text-amber]="(proLaboreIdeal?.fatorRAtual || 0) < 28">
+            <span [class.text-emerald]="(proLaboreIdeal?.fatorRAtual || 0) >= 28" [class.text-amber]="(proLaboreIdeal?.fatorRAtual || 0) < 28" class="font-bold">
               {{ formatarPercentual(proLaboreIdeal?.fatorRAtual) }} ({{ proLaboreIdeal?.anexoAtual }})
             </span>
+          </div>
+          <div class="info-row" *ngIf="(proLaboreIdeal?.diferencaParaAnexo3 || 0) > 0">
+            <span class="text-amber">Déficit Folha Acumulada (12M):</span>
+            <strong class="text-amber">{{ formatarMoeda(proLaboreIdeal?.diferencaParaAnexo3) }}</strong>
           </div>
         </div>
       </div>
@@ -374,7 +390,7 @@
       <div class="simulador-resultados">
         <div *ngIf="calculando" class="loading-state card-painel">
           <div class="spinner"></div>
-          <p>Calculando otimização tributária de pró-labore...</p>
+          <p>Calculando otimização tributária de pró-labore com base nos dados reais...</p>
         </div>
 
         <div *ngIf="!calculando && proLaboreIdeal" class="resultados-content">
@@ -382,22 +398,26 @@
           <div class="metricas-simulacao-grid">
             <!-- Card 1: Pró-Labore Mínimo Ideal -->
             <div class="sim-card card-prolabore">
-              <span class="sim-card-title">Pró-Labore Mínimo Ideal</span>
+              <span class="sim-card-title">Pró-Labore Mínimo Ideal Mensal</span>
               <span class="sim-card-val text-cyan">
                 {{ formatarMoeda(proLaboreIdeal.proLaboreMinimoParaAnexo3) }}
               </span>
               <span class="sim-card-badge">Meta: Fator R ≥ 28%</span>
+              <div class="sim-card-detalhe mt-2" *ngIf="(proLaboreIdeal.diferencaParaAnexo3 || 0) > 0">
+                <span class="text-amber">Déficit acumulado 12M: {{ formatarMoeda(proLaboreIdeal.diferencaParaAnexo3) }}</span>
+              </div>
             </div>
 
             <!-- Card 2: Custo Tributário da PF -->
             <div class="sim-card card-custos">
-              <span class="sim-card-title">Custo Tributário PF (INSS + IRPF)</span>
+              <span class="sim-card-title">Custo Tributário PF (INSS + IRRF)</span>
               <span class="sim-card-val text-amber">
                 {{ formatarMoeda(proLaboreIdeal.custoTributarioTotal) }}
               </span>
               <div class="sim-card-detalhe">
                 <span>INSS Sócio (11%): {{ formatarMoeda(proLaboreIdeal.inssSocio) }}</span>
                 <span>IRRF: {{ formatarMoeda(proLaboreIdeal.irpfSocio) }}</span>
+                <span *ngIf="proLaboreIdeal.custoTributarioAnual">Custo 12M: {{ formatarMoeda(proLaboreIdeal.custoTributarioAnual) }}/ano</span>
               </div>
             </div>
 
@@ -408,16 +428,21 @@
                 {{ formatarMoeda(proLaboreIdeal.economiaSimplesNacional) }}
               </span>
               <div class="sim-card-detalhe">
-                <span>Anexo V ({{ formatarPercentual(proLaboreIdeal.aliquotaEfetivaAnexoV) }}) → Anexo III ({{ formatarPercentual(proLaboreIdeal.aliquotaEfetivaAnexoIII) }})</span>
+                <span>Anexo V ({{ formatarPercentual(proLaboreIdeal.aliquotaEfetivaAnexoV) }}): {{ formatarMoeda(proLaboreIdeal.impostoAnexoVMensal) }}/mês</span>
+                <span>Anexo III ({{ formatarPercentual(proLaboreIdeal.aliquotaEfetivaAnexoIII) }}): {{ formatarMoeda(proLaboreIdeal.impostoAnexoIIIMensal) }}/mês</span>
+                <span *ngIf="proLaboreIdeal.economiaSimplesAnual" class="text-emerald font-semibold">Economia 12M: {{ formatarMoeda(proLaboreIdeal.economiaSimplesAnual) }}/ano</span>
               </div>
             </div>
 
             <!-- Card 4: Saldo Líquido de Vantagem -->
             <div class="sim-card card-saldo" [class.saldo-positivo]="proLaboreIdeal.vantajoso" [class.saldo-negativo]="!proLaboreIdeal.vantajoso">
-              <span class="sim-card-title">Saldo Líquido de Vantagem</span>
+              <span class="sim-card-title">Vantagem Tributária Líquida</span>
               <span class="sim-card-val" [class.text-emerald]="proLaboreIdeal.vantajoso" [class.text-rose]="!proLaboreIdeal.vantajoso">
                 {{ formatarMoeda(proLaboreIdeal.saldoLiquidoVantagem) }}
               </span>
+              <div class="sim-card-detalhe" *ngIf="proLaboreIdeal.saldoLiquidoVantagemAnual">
+                <span>Ganho Líquido 12M: <strong>{{ formatarMoeda(proLaboreIdeal.saldoLiquidoVantagemAnual) }}/ano</strong></span>
+              </div>
               <span class="badge-status-vantagem" [class.badge-vantajoso]="proLaboreIdeal.vantajoso" [class.badge-desfavoravel]="!proLaboreIdeal.vantajoso">
                 {{ proLaboreIdeal.vantajoso ? '✓ Altamente Vantajoso' : '⚠ Desfavorável' }}
               </span>
@@ -440,77 +465,20 @@
 
             <div class="tabela-comparativa-anexos mt-3">
               <div class="comp-col">
-                <span class="comp-header">Cenário Atual (Sem Ajuste)</span>
-                <span class="comp-val">Fator R: {{ formatarPercentual(proLaboreIdeal.fatorRAtual) }}</span>
-                <span class="comp-sub">Tributação pelo {{ proLaboreIdeal.anexoAtual }}</span>
+                <span class="comp-header">Cenário Tributação Anexo V</span>
+                <span class="comp-val text-rose">{{ formatarMoeda(proLaboreIdeal.impostoAnexoVMensal) }}/mês</span>
+                <span class="comp-sub">Alíquota: {{ formatarPercentual(proLaboreIdeal.aliquotaEfetivaAnexoV) }} ({{ formatarMoeda(proLaboreIdeal.impostoAnexoVAnual) }} em 12M)</span>
               </div>
               <div class="comp-arrow">➔</div>
               <div class="comp-col highlight">
-                <span class="comp-header">Cenário Otimizado (Com Pró-Labore)</span>
-                <span class="comp-val text-emerald">Fator R Projetado: {{ formatarPercentual(proLaboreIdeal.fatorRProjetado) }}</span>
-                <span class="comp-sub text-cyan">Tributação garantida pelo Anexo III</span>
+                <span class="comp-header">Cenário Tributação Anexo III</span>
+                <span class="comp-val text-emerald">{{ formatarMoeda(proLaboreIdeal.impostoAnexoIIIMensal) }}/mês</span>
+                <span class="comp-sub text-cyan">Alíquota: {{ formatarPercentual(proLaboreIdeal.aliquotaEfetivaAnexoIII) }} ({{ formatarMoeda(proLaboreIdeal.impostoAnexoIIIAnual) }} em 12M)</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- ======================================================== -->
-  <!-- ABA 4: LANÇAMENTO MANUAL DE FOLHA                        -->
-  <!-- ======================================================== -->
-  <div *ngIf="abaAtiva === 'manual'">
-    <div class="card-painel manual-container">
-      <div class="painel-header">
-        <div>
-          <h3>Lançamento Manual de Folha de Pagamento</h3>
-          <p class="subtitle">Informe os componentes analíticos da folha para registro e sincronização imediata com o Fator R</p>
-        </div>
-      </div>
-
-      <form (ngSubmit)="salvarFolhaManual()" class="manual-form">
-        <div class="form-row">
-          <div class="form-group col-4">
-            <label>Competência (AAAA-MM) *</label>
-            <input type="month" class="form-control" [(ngModel)]="formManual.competencia" name="competencia" required />
-          </div>
-          <div class="form-group col-4">
-            <label>Salários CLT (R$)</label>
-            <input type="number" step="0.01" class="form-control" [(ngModel)]="formManual.valorSalarios" name="valorSalarios" />
-          </div>
-          <div class="form-group col-4">
-            <label>Pró-Labore Sócios (R$)</label>
-            <input type="number" step="0.01" class="form-control" [(ngModel)]="formManual.valorProLabore" name="valorProLabore" />
-          </div>
-        </div>
-
-        <div class="form-row mt-3">
-          <div class="form-group col-4">
-            <label>13º Salário (R$)</label>
-            <input type="number" step="0.01" class="form-control" [(ngModel)]="formManual.valorDecimoTerceiro" name="valorDecimoTerceiro" />
-          </div>
-          <div class="form-group col-4">
-            <label>INSS Patronal (R$)</label>
-            <input type="number" step="0.01" class="form-control" [(ngModel)]="formManual.valorInssPatronal" name="valorInssPatronal" />
-          </div>
-          <div class="form-group col-4">
-            <label>FGTS (R$)</label>
-            <input type="number" step="0.01" class="form-control" [(ngModel)]="formManual.valorFgts" name="valorFgts" />
-          </div>
-        </div>
-
-        <div class="total-resumo-box mt-4">
-          <div class="total-info">
-            <span class="total-label">Total da Folha Calculado:</span>
-            <span class="total-val">{{ formatarMoeda(totalManual) }}</span>
-          </div>
-          <button type="submit" class="btn btn-primary btn-lg" [disabled]="salvando">
-            <span *ngIf="!salvando">Salvar e Sincronizar Fator R</span>
-            <span *ngIf="salvando">Salvando...</span>
-          </button>
-        </div>
-      </form>
     </div>
   </div>
 </div>

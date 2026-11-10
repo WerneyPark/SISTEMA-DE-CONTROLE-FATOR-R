@@ -45,6 +45,11 @@ export interface ProLaboreIdealDTO {
   competencia: string;
   faturamentoPrevisto: number;
   folhaAtualSemProLabore: number;
+  folhaSemProLabore12?: number;
+  proLaboreAtual12?: number;
+  folhaSemProLaboreMes?: number;
+  proLaboreAtualMes?: number;
+  diferencaParaAnexo3?: number;
   proLaboreMinimoParaAnexo3: number;
   fatorRProjetado: number;
   anexoProjetado: 'Anexo III' | 'Anexo V';
@@ -53,6 +58,15 @@ export interface ProLaboreIdealDTO {
     irpfSocio: number;
     custoTotal: number;
   };
+  custoTributarioAnual?: number;
+  aliquotaEfetivaAnexoV?: number;
+  aliquotaEfetivaAnexoIII?: number;
+  impostoAnexoVMensal?: number;
+  impostoAnexoIIIMensal?: number;
+  impostoAnexoVAnual?: number;
+  impostoAnexoIIIAnual?: number;
   economiaSimplesNacional: number;
+  economiaSimplesAnual?: number;
   saldoLiquidoVantagem: number;
+  saldoLiquidoVantagemAnual?: number;
 }
