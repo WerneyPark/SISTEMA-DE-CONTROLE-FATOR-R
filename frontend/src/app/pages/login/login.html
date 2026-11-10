@@ -167,6 +167,24 @@
           </div>
         </div>
 
+        <div class="form-section-title">Indicar Contador Responsável</div>
+        <div class="form-group">
+          <label>Contador / Escritório Contábil *</label>
+          <select [(ngModel)]="empresario.contadorIdentificador" name="eContador" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: #0f172a; color: #fff; margin-bottom: 8px;">
+            <option value="" disabled selected>Selecione um contador na lista...</option>
+            <option *ngFor="let c of contadores" [value]="c.id">
+              {{ c.nomeContador }} - {{ c.nomeOrganizacao }} ({{ c.crc }})
+            </option>
+            <option value="OUTRO">Outro (digitar CPF, CNPJ ou CRC manualmente)</option>
+          </select>
+          <input *ngIf="empresario.contadorIdentificador === 'OUTRO' || contadores.length === 0" 
+                 type="text" [(ngModel)]="contadorManual" (input)="onContadorManualChange()" 
+                 placeholder="Digite o CPF do Contador, CNPJ da Contabilidade ou CRC" style="margin-top: 6px;">
+          <span style="font-size: 12px; color: #94a3b8; display: block; margin-top: 4px;">
+            A sua empresa será vinculada estritamente ao profissional ou escritório indicado.
+          </span>
+        </div>
+
         <button type="submit" class="btn-primary" [disabled]="carregando">
           {{ carregando ? 'Cadastrando...' : 'Criar Conta de Empresário' }}
         </button>

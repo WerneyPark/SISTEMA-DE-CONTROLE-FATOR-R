@@ -1,7 +1,12 @@
 <div class="empresas-container">
   <div class="page-header">
-    <h2>Empresas Cadastradas</h2>
-    <button class="btn btn-primary" *ngIf="isAdmin" (click)="abrirModalEmpresa()">+ Nova Empresa</button>
+    <div>
+      <h2>Empresas Cadastradas</h2>
+      <p style="margin: 4px 0 0 0; color: #64748b; font-size: 14px;">
+        Gerencie as empresas e seus acessos autorizados no sistema.
+      </p>
+    </div>
+    <button class="btn btn-primary" *ngIf="podeCriarEmpresa" (click)="abrirModalEmpresa()">+ Nova Empresa</button>
   </div>
 
   <div class="alert alert-error" *ngIf="erro">
@@ -12,7 +17,56 @@
     <span>{{ sucesso }}</span>
   </div>
 
-  <div class="empresas-grid">
+  <!-- AVISO DE CONVITES PENDENTES PARA O EMPRESÁRIO -->
+  <div *ngIf="isEmpresario && convitesPendentes.length > 0" class="pending-invites-card" style="margin-bottom: 24px; padding: 18px 20px; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 12px;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(59, 130, 246, 0.2); color: #38bdf8;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </span>
+      <h3 style="margin: 0; font-size: 16px; color: #f8fafc; font-weight: 600;">
+        Empresas Aguardando Seu Aceite ({{ convitesPendentes.length }})
+      </h3>
+    </div>
+    <p style="margin: 0 0 14px 0; font-size: 13px; color: #94a3b8;">
+      Um contador cadastrou a(s) empresa(s) abaixo indicando você como empresário responsável. Aceite para confirmar a gestão contábil e liberar os acessos.
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div *ngFor="let c of convitesPendentes" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <div style="font-weight: 600; color: #f1f5f9; font-size: 14px;">
+            {{ c.razaoSocial }} <small style="color: #38bdf8;">(CNPJ: {{ c.cnpj }})</small>
+          </div>
+          <div style="font-size: 13px; color: #cbd5e1; margin-top: 3px;">
+            <strong>Contador Responsável:</strong> {{ c.nomeContador }} &bull; {{ c.nomeOrganizacao }} <span *ngIf="c.crc">({{ c.crc }})</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-primary btn-sm" [disabled]="processandoConviteId === c.vinculoId" (click)="aceitarConvite(c)">
+            {{ processandoConviteId === c.vinculoId ? 'Salvando...' : '✓ Aceitar Empresa e Contador' }}
+          </button>
+          <button type="button" class="btn btn-danger btn-sm" [disabled]="processandoConviteId === c.vinculoId" (click)="recusarConvite(c)">
+            Recusar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="empresas.length === 0" style="padding: 40px; text-align: center; background: rgba(30, 41, 59, 0.4); border-radius: 12px; border: 1px dashed rgba(255, 255, 255, 0.15); margin-top: 16px;">
+    <p style="color: #94a3b8; font-size: 15px; margin: 0 0 12px 0;">
+      Nenhuma empresa vinculada à sua conta no momento.
+    </p>
+    <button class="btn btn-primary btn-sm" *ngIf="podeCriarEmpresa" (click)="abrirModalEmpresa()">
+      + Cadastrar Primeira Empresa
+    </button>
+  </div>
+
+  <div class="empresas-grid" *ngIf="empresas.length > 0">
     <div class="empresa-card" *ngFor="let empresa of empresas">
       <div class="empresa-icon">
         {{ empresa.razaoSocial.substring(0,2).toUpperCase() }}
@@ -22,7 +76,7 @@
         <p>CNPJ: {{ empresa.cnpj }}</p>
         <p *ngIf="empresa.dataInicioAtividade">Abertura: {{ empresa.dataInicioAtividade }}</p>
       </div>
-      <div class="empresa-actions" *ngIf="isAdmin">
+      <div class="empresa-actions" *ngIf="isAdmin || isEmpresario">
         <button class="btn btn-secondary btn-sm" (click)="abrirModalUsuario(empresa)">Gerenciar Acessos</button>
         <button class="btn btn-danger btn-sm" (click)="excluirEmpresa(empresa)" style="margin-left: 8px;">Excluir</button>
       </div>
@@ -31,29 +85,71 @@
 
   <!-- MODAL NOVA EMPRESA -->
   <div class="modal-overlay" *ngIf="mostrarModalEmpresa" (click)="fecharModalEmpresa()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>Nova Empresa</h3>
         <button class="modal-close" (click)="fecharModalEmpresa()">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label>Razão Social</label>
+          <label>Razão Social *</label>
           <input type="text" [(ngModel)]="novaEmpresaForm.razaoSocial" placeholder="Nome da Empresa LTDA">
         </div>
-        <div class="form-group" style="margin-top: 16px;">
-          <label>CNPJ</label>
-          <input type="text" [(ngModel)]="novaEmpresaForm.cnpj" placeholder="00.000.000/0000-00" maxlength="18" (input)="aplicarMascaraCNPJ($event)">
+        <div class="form-row" style="margin-top: 14px; display: flex; gap: 12px;">
+          <div class="form-group" style="flex: 1;">
+            <label>CNPJ *</label>
+            <input type="text" [(ngModel)]="novaEmpresaForm.cnpj" placeholder="00.000.000/0000-00" maxlength="18" (input)="aplicarMascaraCNPJ($event)">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>Nome Fantasia (Opcional)</label>
+            <input type="text" [(ngModel)]="novaEmpresaForm.nomeFantasia" placeholder="Nome comercial">
+          </div>
         </div>
-        <div class="form-group" style="margin-top: 16px;">
+        <div class="form-group" style="margin-top: 14px;">
           <label>Mês de Abertura (Opcional)</label>
           <input type="month" [(ngModel)]="novaEmpresaForm.dataInicioAtividade">
           <span class="input-hint">Usado para calcular a Receita Proporcional (RBT12).</span>
         </div>
+
+        <!-- SE O CONTADOR ESTIVER CRIANDO: Exige CPF do Empresário -->
+        <div *ngIf="isAdmin" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+          <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #38bdf8;">Empresário Responsável</h4>
+          <p style="font-size: 12px; color: #94a3b8; margin: 0 0 10px 0;">
+            O empresário receberá um aviso ao entrar no sistema para aceitar a empresa e a gestão da sua contabilidade.
+          </p>
+          <div class="form-row" style="display: flex; gap: 12px;">
+            <div class="form-group" style="flex: 1;">
+              <label>CPF do Empresário *</label>
+              <input type="text" [(ngModel)]="novaEmpresaForm.cpfEmpresario" placeholder="000.000.000-00" maxlength="14" (input)="aplicarMascaraCPFEmpresario($event)">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label>Nome do Empresário (Opcional)</label>
+              <input type="text" [(ngModel)]="novaEmpresaForm.nomeEmpresario" placeholder="Nome completo do sócio">
+            </div>
+          </div>
+        </div>
+
+        <!-- SE O EMPRESÁRIO ESTIVER CRIANDO: Exige indicação do Contador -->
+        <div *ngIf="isEmpresario" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+          <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #38bdf8;">Indicar Contador Responsável *</h4>
+          <div class="form-group">
+            <select [(ngModel)]="novaEmpresaForm.contadorIdentificador" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: #0f172a; color: #fff; margin-bottom: 8px;">
+              <option value="" disabled selected>Selecione um contador na lista...</option>
+              <option *ngFor="let c of contadores" [value]="c.id">
+                {{ c.nomeContador }} - {{ c.nomeOrganizacao }} ({{ c.crc }})
+              </option>
+              <option value="OUTRO">Outro (digitar CPF, CNPJ ou CRC manualmente)</option>
+            </select>
+            <input *ngIf="novaEmpresaForm.contadorIdentificador === 'OUTRO' || contadores.length === 0" 
+                   type="text" [(ngModel)]="contadorManual" (input)="onContadorManualChange()" 
+                   placeholder="Digite o CPF do Contador, CNPJ da Contabilidade ou CRC" style="margin-top: 6px;">
+            <span class="input-hint">A empresa ficará vinculada estritamente ao profissional ou escritório indicado.</span>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" (click)="fecharModalEmpresa()">Cancelar</button>
-        <button class="btn btn-primary" (click)="salvarNovaEmpresa()">Salvar</button>
+        <button class="btn btn-primary" (click)="salvarNovaEmpresa()">Salvar Empresa</button>
       </div>
     </div>
   </div>

@@ -1,14 +1,20 @@
 package com.fatorr.backend.controller;
 
 import com.fatorr.backend.domain.Empresa;
+import com.fatorr.backend.domain.Usuario;
 import com.fatorr.backend.dto.SimulacaoTributariaDTO;
 import com.fatorr.backend.repository.EmpresaRepository;
+import com.fatorr.backend.repository.UsuarioRepository;
+import com.fatorr.backend.service.AuthService;
 import com.fatorr.backend.service.CalculoFatorRService;
+import com.fatorr.backend.util.JwtUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.YearMonth;
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -19,15 +25,42 @@ public class EmpresaController {
 
     private final EmpresaRepository empresaRepository;
     private final CalculoFatorRService calculoFatorRService;
+    private final AuthService authService;
+    private final UsuarioRepository usuarioRepository;
+    private final JwtUtils jwtUtils;
 
     @GetMapping
-    public List<Empresa> listarTodas(@RequestParam(required = false) Long usuarioId) {
-        if (usuarioId != null) {
-            // Em um sistema real com Spring Security, pegaríamos o usuário do Contexto (Token JWT).
-            // Aqui filtramos na unha usando o repositório.
-            return empresaRepository.findByUsuariosId(usuarioId);
+    public List<Empresa> listarTodas(
+            @RequestParam(required = false) Long usuarioId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        Usuario usuario = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7).trim();
+            if (jwtUtils.validateToken(token)) {
+                String uuidId = jwtUtils.extractUuidId(token);
+                if (uuidId != null) {
+                    usuario = authService.buscarUsuarioPorUuid(uuidId).orElse(null);
+                }
+                if (usuario == null) {
+                    String cpf = jwtUtils.extractCpf(token);
+                    if (cpf != null) {
+                        usuario = usuarioRepository.findByCpf(cpf).orElse(null);
+                    }
+                }
+            }
         }
-        return empresaRepository.findAll();
+
+        if (usuario == null && usuarioId != null) {
+            usuario = usuarioRepository.findById(usuarioId).orElse(null);
+        }
+
+        if (usuario != null) {
+            return authService.listarEmpresasPermitidasEntidade(usuario);
+        }
+
+        // Sem credenciais autenticadas, não retorna empresas
+        return Collections.emptyList();
     }
 
     @GetMapping("/{id}")
@@ -38,8 +71,35 @@ public class EmpresaController {
     }
 
     @PostMapping
-    public Empresa criar(@RequestBody Empresa empresa) {
-        return empresaRepository.save(empresa);
+    public ResponseEntity<?> criar(
+            @RequestBody AuthService.CriarEmpresaRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            Usuario usuario = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7).trim();
+                if (jwtUtils.validateToken(token)) {
+                    String uuidId = jwtUtils.extractUuidId(token);
+                    if (uuidId != null) {
+                        usuario = authService.buscarUsuarioPorUuid(uuidId).orElse(null);
+                    }
+                    if (usuario == null) {
+                        String cpf = jwtUtils.extractCpf(token);
+                        if (cpf != null) {
+                            usuario = usuarioRepository.findByCpf(cpf).orElse(null);
+                        }
+                    }
+                }
+            }
+
+            Empresa criada = authService.criarEmpresaComVinculo(request, usuario);
+            return ResponseEntity.ok(criada);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "Erro ao criar empresa: " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
@@ -85,6 +145,7 @@ public class EmpresaController {
         SimulacaoTributariaDTO resultado = calculoFatorRService.simularTributacao(id, competencia);
         return ResponseEntity.ok(resultado);
     }
+
     @GetMapping("/{id}/simulacao-futura")
     public ResponseEntity<List<com.fatorr.backend.dto.ProjecaoCenarioDTO>> simularProximosMeses(
             @PathVariable Long id,

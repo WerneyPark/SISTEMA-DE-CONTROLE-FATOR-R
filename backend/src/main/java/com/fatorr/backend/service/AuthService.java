@@ -96,6 +96,7 @@ public class AuthService {
         private String razaoSocial;
         private String nomeFantasia;
         private String cnpj;
+        private String contadorIdentificador; // Obrigatório: identificador do Contador / Organização
     }
 
     @Data
@@ -108,6 +109,62 @@ public class AuthService {
         private String senha;
         private String empresaId;
         private String funcao;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CriarEmpresaRequest {
+        private String razaoSocial;
+        private String nomeFantasia;
+        private String cnpj;
+        private String dataInicioAtividade;
+        private String cpfEmpresario;
+        private String nomeEmpresario;
+        private String contadorIdentificador;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ContadorResumoDTO {
+        private String id;
+        private String usuarioId;
+        private String nomeContador;
+        private String cpfContador;
+        private String nomeOrganizacao;
+        private String cnpjOrganizacao;
+        private String crc;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ConviteEmpresaDTO {
+        private String vinculoId;
+        private Long empresaId;
+        private String empresaUuid;
+        private String razaoSocial;
+        private String nomeFantasia;
+        private String cnpj;
+        private String dataInicioAtividade;
+        private String nomeContador;
+        private String cpfContador;
+        private String nomeOrganizacao;
+        private String cnpjOrganizacao;
+        private String crc;
+        private String funcao;
+        private StatusVinculo statusVinculo;
+        private LocalDateTime createdAt;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RespostaConviteRequest {
+        private boolean aceitar;
     }
 
     @Data
@@ -167,13 +224,11 @@ public class AuthService {
         String trimmed = loginIdentifier.trim();
         Optional<Usuario> usuarioOpt = Optional.empty();
 
-        // 1. Tentar busca por CPF se o formato for numérico/máscara
         String cleanCpf = CpfUtils.unmask(trimmed);
         if (!cleanCpf.isEmpty()) {
             usuarioOpt = usuarioRepository.findByCpf(cleanCpf);
         }
 
-        // 2. Se não encontrou por CPF, buscar por e-mail
         if (usuarioOpt.isEmpty()) {
             usuarioOpt = usuarioRepository.findByEmail(trimmed.toLowerCase());
         }
@@ -184,7 +239,6 @@ public class AuthService {
 
         Usuario usuario = usuarioOpt.get();
 
-        // 3. Validação da Senha (BCrypt com fallback gracioso para texto puro de seed/testes)
         boolean senhaValida = matchesPassword(rawPassword, usuario.getSenhaHash())
                 || matchesPassword(rawPassword, usuario.getSenha());
 
@@ -192,17 +246,13 @@ public class AuthService {
             throw new IllegalArgumentException("Credenciais inválidas");
         }
 
-        // Se a senha estava em texto puro, atualiza silenciosamente para hash BCrypt
         if (usuario.getSenhaHash() == null || !usuario.getSenhaHash().startsWith("$2")) {
             String novoHash = passwordEncoder.encode(rawPassword);
             usuario.setSenhaHash(novoHash);
             usuarioRepository.save(usuario);
         }
 
-        // 4. Gerar Token JWT nativo
         String token = jwtUtils.generateToken(usuario);
-
-        // 5. Carregar empresas vinculadas e seus respectivos status de vínculo
         List<AuthResponseDTO.EmpresaVinculadaDTO> empresasVinculadas = carregarEmpresasUsuario(usuario);
 
         return AuthResponseDTO.builder()
@@ -248,7 +298,6 @@ public class AuthService {
             throw new IllegalArgumentException("Já existe um usuário cadastrado com este e-mail");
         }
 
-        // Cadastra ou reutiliza a Organização Contábil
         OrganizacaoContabil org = organizacaoContabilRepository.findByCnpj(cleanCnpj)
                 .orElseGet(() -> {
                     OrganizacaoContabil novaOrg = new OrganizacaoContabil();
@@ -256,13 +305,12 @@ public class AuthService {
                     novaOrg.setNome(request.getNomeOrganizacao() != null && !request.getNomeOrganizacao().isBlank()
                             ? request.getNomeOrganizacao() : "Organização Contábil " + CnpjUtils.mask(cleanCnpj));
                     novaOrg.setCnpj(cleanCnpj);
-                    novaOrg.setCrc(request.getCrc());
+                    novaOrg.setCrc(request.getCrc().trim());
                     novaOrg.setCreatedAt(LocalDateTime.now());
                     novaOrg.setUpdatedAt(LocalDateTime.now());
                     return organizacaoContabilRepository.save(novaOrg);
                 });
 
-        // Cadastra o usuário Contador
         String encodedPass = passwordEncoder.encode(request.getSenha());
         Usuario contador = new Usuario();
         contador.setUuidId(UUID.randomUUID().toString());
@@ -311,17 +359,52 @@ public class AuthService {
             throw new IllegalArgumentException("A senha deve possuir pelo menos 6 caracteres");
         }
 
+        // Regra: Empresário DEVE indicar o Contador responsável
+        if (request.getContadorIdentificador() == null || request.getContadorIdentificador().isBlank()) {
+            throw new IllegalArgumentException("O Empresário deve indicar o Contador ou Organização Contábil responsável");
+        }
+
+        OrganizacaoContabil org = resolverOrganizacaoContabil(request.getContadorIdentificador());
+
         String cleanCpf = CpfUtils.unmask(request.getCpf());
         String cleanCnpj = CnpjUtils.unmask(request.getCnpj());
 
-        if (usuarioRepository.findByCpf(cleanCpf).isPresent()) {
-            throw new IllegalArgumentException("Já existe um usuário cadastrado com este CPF");
-        }
-        if (request.getEmail() != null && usuarioRepository.findByEmail(request.getEmail().toLowerCase()).isPresent()) {
-            throw new IllegalArgumentException("Já existe um usuário cadastrado com este e-mail");
+        Optional<Usuario> usuarioExistente = usuarioRepository.findByCpf(cleanCpf);
+        Usuario empresario;
+        String encodedPass = passwordEncoder.encode(request.getSenha());
+
+        if (usuarioExistente.isPresent()) {
+            empresario = usuarioExistente.get();
+            if (empresario.getStatus() == StatusUsuario.ATIVO && empresario.getSenhaHash() != null && !empresario.getSenhaHash().isBlank()) {
+                throw new IllegalArgumentException("Já existe um usuário ativo cadastrado com este CPF. Por favor, faça login.");
+            }
+            // Completando pré-cadastro
+            empresario.setNome(request.getNome());
+            if (request.getEmail() != null && !request.getEmail().isBlank()) {
+                empresario.setEmail(request.getEmail().toLowerCase());
+            }
+            empresario.setSenha(encodedPass);
+            empresario.setSenhaHash(encodedPass);
+            empresario.setTipoPerfil(TipoPerfil.EMPRESARIO);
+            empresario.setTipo(TipoUsuario.USUARIO_EMPRESA);
+            empresario.setStatus(StatusUsuario.ATIVO);
+        } else {
+            if (request.getEmail() != null && usuarioRepository.findByEmail(request.getEmail().toLowerCase()).isPresent()) {
+                throw new IllegalArgumentException("Já existe um usuário cadastrado com este e-mail");
+            }
+            empresario = new Usuario();
+            empresario.setUuidId(UUID.randomUUID().toString());
+            empresario.setNome(request.getNome());
+            empresario.setEmail(request.getEmail() != null ? request.getEmail().toLowerCase() : null);
+            empresario.setCpf(cleanCpf);
+            empresario.setSenha(encodedPass);
+            empresario.setSenhaHash(encodedPass);
+            empresario.setTipoPerfil(TipoPerfil.EMPRESARIO);
+            empresario.setTipo(TipoUsuario.USUARIO_EMPRESA);
+            empresario.setStatus(StatusUsuario.ATIVO);
         }
 
-        // Criar ou localizar Empresa
+        // Criar ou localizar Empresa vinculada à Organização Contábil indicada
         Empresa empresa = empresaRepository.findByCnpj(cleanCnpj)
                 .orElseGet(() -> {
                     Empresa e = new Empresa();
@@ -330,27 +413,20 @@ public class AuthService {
                             ? request.getRazaoSocial() : "Empresa " + cleanCnpj);
                     e.setNomeFantasia(request.getNomeFantasia());
                     e.setCnpj(cleanCnpj);
+                    e.setOrganizacaoContabilId(org.getId());
                     e.setDataInicioAtividade(LocalDate.now());
                     return empresaRepository.save(e);
                 });
 
-        // Cadastrar usuário Empresário
-        String encodedPass = passwordEncoder.encode(request.getSenha());
-        Usuario empresario = new Usuario();
-        empresario.setUuidId(UUID.randomUUID().toString());
-        empresario.setNome(request.getNome());
-        empresario.setEmail(request.getEmail() != null ? request.getEmail().toLowerCase() : null);
-        empresario.setCpf(cleanCpf);
-        empresario.setSenha(encodedPass);
-        empresario.setSenhaHash(encodedPass);
-        empresario.setTipoPerfil(TipoPerfil.EMPRESARIO);
-        empresario.setTipo(TipoUsuario.USUARIO_EMPRESA);
-        empresario.setStatus(StatusUsuario.ATIVO);
-        empresario.getEmpresas().add(empresa);
+        if (empresa.getOrganizacaoContabilId() == null) {
+            empresa.setOrganizacaoContabilId(org.getId());
+            empresaRepository.save(empresa);
+        }
 
+        empresario.getEmpresas().add(empresa);
         empresario = usuarioRepository.save(empresario);
 
-        // Criar Vínculo APROVADO em EmpresaUsuario
+        // Vínculo APROVADO em EmpresaUsuario
         Optional<EmpresaUsuario> vincOpt = empresaUsuarioRepository.findByEmpresaIdAndUsuarioId(empresa.getUuidId(), empresario.getUuidId());
         if (vincOpt.isEmpty()) {
             EmpresaUsuario vinc = new EmpresaUsuario(
@@ -363,6 +439,11 @@ public class AuthService {
                     LocalDateTime.now(),
                     LocalDateTime.now()
             );
+            empresaUsuarioRepository.save(vinc);
+        } else {
+            EmpresaUsuario vinc = vincOpt.get();
+            vinc.setStatusVinculo(StatusVinculo.APROVADO);
+            vinc.setAprovadoEm(LocalDateTime.now());
             empresaUsuarioRepository.save(vinc);
         }
 
@@ -429,7 +510,6 @@ public class AuthService {
             usuario.setStatus(StatusUsuario.ATIVO);
         }
 
-        usuario.getEmpresas().add(empresa);
         usuario = usuarioRepository.save(usuario);
 
         // Verificar pré-cadastro pendente
@@ -439,6 +519,8 @@ public class AuthService {
             vinc.setStatusVinculo(StatusVinculo.APROVADO);
             vinc.setAprovadoEm(LocalDateTime.now());
             empresaUsuarioRepository.save(vinc);
+            usuario.getEmpresas().add(empresa);
+            usuarioRepository.save(usuario);
         } else {
             EmpresaUsuario novoVinc = new EmpresaUsuario(
                     UUID.randomUUID().toString(),
@@ -542,8 +624,305 @@ public class AuthService {
     }
 
     // ==========================================
-    // 6. Gestão de Vínculos e Convites
+    // 6. Gestão de Empresas e Convites Contador <-> Empresário
     // ==========================================
+    @Transactional(readOnly = true)
+    public List<ContadorResumoDTO> listarContadoresDisponiveis() {
+        List<Usuario> contadores = usuarioRepository.findAll().stream()
+                .filter(u -> u.getTipoPerfil() == TipoPerfil.CONTABILISTA || u.getTipo() == TipoUsuario.ADMINISTRADOR_CONTABIL)
+                .toList();
+
+        List<ContadorResumoDTO> lista = new ArrayList<>();
+        for (Usuario c : contadores) {
+            OrganizacaoContabil org = null;
+            if (c.getOrganizacaoContabilId() != null) {
+                org = organizacaoContabilRepository.findById(c.getOrganizacaoContabilId()).orElse(null);
+            }
+            lista.add(ContadorResumoDTO.builder()
+                    .id(org != null ? org.getId() : c.getUuidId())
+                    .usuarioId(c.getUuidId())
+                    .nomeContador(c.getNome())
+                    .cpfContador(c.getCpf())
+                    .nomeOrganizacao(org != null ? org.getNome() : "Organização Contábil")
+                    .cnpjOrganizacao(org != null ? org.getCnpj() : "")
+                    .crc(org != null ? org.getCrc() : "")
+                    .build());
+        }
+        return lista;
+    }
+
+    public OrganizacaoContabil resolverOrganizacaoContabil(String identificador) {
+        if (identificador == null || identificador.isBlank()) {
+            throw new IllegalArgumentException("É obrigatório indicar o Contador ou Organização Contábil responsável");
+        }
+        String trimmed = identificador.trim();
+
+        // 1. Tentar por ID da Organização
+        Optional<OrganizacaoContabil> porId = organizacaoContabilRepository.findById(trimmed);
+        if (porId.isPresent()) return porId.get();
+
+        // 2. Tentar por CNPJ da Organização
+        String cleanCnpj = CnpjUtils.unmask(trimmed);
+        if (!cleanCnpj.isEmpty()) {
+            Optional<OrganizacaoContabil> porCnpj = organizacaoContabilRepository.findByCnpj(cleanCnpj);
+            if (porCnpj.isPresent()) return porCnpj.get();
+        }
+
+        // 3. Tentar por CRC
+        Optional<OrganizacaoContabil> porCrc = organizacaoContabilRepository.findByCrcIgnoreCase(trimmed);
+        if (porCrc.isPresent()) return porCrc.get();
+
+        // 4. Tentar por CPF do Contador
+        String cleanCpf = CpfUtils.unmask(trimmed);
+        if (!cleanCpf.isEmpty()) {
+            Optional<Usuario> porCpf = usuarioRepository.findByCpf(cleanCpf);
+            if (porCpf.isPresent() && porCpf.get().getOrganizacaoContabilId() != null) {
+                Optional<OrganizacaoContabil> orgDoContador = organizacaoContabilRepository.findById(porCpf.get().getOrganizacaoContabilId());
+                if (orgDoContador.isPresent()) return orgDoContador.get();
+            }
+        }
+
+        // 5. Tentar por e-mail do Contador
+        Optional<Usuario> porEmail = usuarioRepository.findByEmail(trimmed.toLowerCase());
+        if (porEmail.isPresent() && porEmail.get().getOrganizacaoContabilId() != null) {
+            Optional<OrganizacaoContabil> orgDoContador = organizacaoContabilRepository.findById(porEmail.get().getOrganizacaoContabilId());
+            if (orgDoContador.isPresent()) return orgDoContador.get();
+        }
+
+        throw new IllegalArgumentException("Contador ou Organização Contábil não localizada com identificador: " + identificador);
+    }
+
+    @Transactional
+    public Empresa criarEmpresaComVinculo(CriarEmpresaRequest request, Usuario usuarioLogado) {
+        if (request.getRazaoSocial() == null || request.getRazaoSocial().isBlank()) {
+            throw new IllegalArgumentException("Razão Social é obrigatória");
+        }
+        if (!CnpjUtils.isValid(request.getCnpj())) {
+            throw new IllegalArgumentException("CNPJ inválido: " + request.getCnpj());
+        }
+
+        String cleanCnpj = CnpjUtils.unmask(request.getCnpj());
+        if (empresaRepository.findByCnpj(cleanCnpj).isPresent()) {
+            throw new IllegalArgumentException("Já existe uma empresa cadastrada com este CNPJ");
+        }
+
+        Empresa empresa = new Empresa();
+        empresa.setUuidId(UUID.randomUUID().toString());
+        empresa.setRazaoSocial(request.getRazaoSocial().trim());
+        empresa.setNomeFantasia(request.getNomeFantasia() != null ? request.getNomeFantasia().trim() : null);
+        empresa.setCnpj(cleanCnpj);
+
+        if (request.getDataInicioAtividade() != null && !request.getDataInicioAtividade().isBlank()) {
+            String dataStr = request.getDataInicioAtividade().trim();
+            if (dataStr.length() == 7) {
+                dataStr = dataStr + "-01";
+            }
+            try {
+                empresa.setDataInicioAtividade(LocalDate.parse(dataStr));
+            } catch (Exception ignored) {
+                empresa.setDataInicioAtividade(LocalDate.now());
+            }
+        } else {
+            empresa.setDataInicioAtividade(LocalDate.now());
+        }
+
+        boolean isContador = usuarioLogado != null &&
+                (usuarioLogado.getTipoPerfil() == TipoPerfil.CONTABILISTA || usuarioLogado.getTipo() == TipoUsuario.ADMINISTRADOR_CONTABIL);
+
+        if (isContador) {
+            // Regra 1: Contador criando empresa -> EXIGE CPF do Empresário
+            if (request.getCpfEmpresario() == null || request.getCpfEmpresario().isBlank()) {
+                throw new IllegalArgumentException("Ao cadastrar uma empresa, o Contador deve informar o CPF do Empresário responsável");
+            }
+            String cleanCpfEmpresario = CpfUtils.unmask(request.getCpfEmpresario());
+            if (!CpfUtils.isValid(cleanCpfEmpresario)) {
+                throw new IllegalArgumentException("CPF do Empresário é inválido: " + request.getCpfEmpresario());
+            }
+
+            empresa.setOrganizacaoContabilId(usuarioLogado.getOrganizacaoContabilId());
+            empresa = empresaRepository.save(empresa);
+
+            // Localizar ou pré-cadastrar o Empresário
+            String finalCleanCpf = cleanCpfEmpresario;
+            Usuario empresario = usuarioRepository.findByCpf(cleanCpfEmpresario).orElseGet(() -> {
+                Usuario u = new Usuario();
+                u.setUuidId(UUID.randomUUID().toString());
+                u.setNome((request.getNomeEmpresario() != null && !request.getNomeEmpresario().isBlank())
+                        ? request.getNomeEmpresario().trim()
+                        : "Empresário (" + CpfUtils.mask(finalCleanCpf) + ")");
+                u.setCpf(finalCleanCpf);
+                u.setSenha("");
+                u.setTipoPerfil(TipoPerfil.EMPRESARIO);
+                u.setTipo(TipoUsuario.USUARIO_EMPRESA);
+                u.setStatus(StatusUsuario.PENDENTE_CADASTRO);
+                return usuarioRepository.save(u);
+            });
+
+            // Gerar vínculo PENDENTE para o Empresário aceitar a empresa e o contador
+            EmpresaUsuario vinculoPendente = new EmpresaUsuario(
+                    UUID.randomUUID().toString(),
+                    empresa.getUuidId(),
+                    empresario.getUuidId(),
+                    "Sócio Administrador",
+                    StatusVinculo.PENDENTE,
+                    usuarioLogado.getUuidId(),
+                    null,
+                    LocalDateTime.now()
+            );
+            empresaUsuarioRepository.save(vinculoPendente);
+
+        } else {
+            // Regra 2: Empresário criando empresa -> EXIGE indicação de Contador
+            OrganizacaoContabil org = resolverOrganizacaoContabil(request.getContadorIdentificador());
+            empresa.setOrganizacaoContabilId(org.getId());
+            empresa = empresaRepository.save(empresa);
+
+            if (usuarioLogado != null) {
+                usuarioLogado.getEmpresas().add(empresa);
+                usuarioRepository.save(usuarioLogado);
+
+                EmpresaUsuario vinculoAprovado = new EmpresaUsuario(
+                        UUID.randomUUID().toString(),
+                        empresa.getUuidId(),
+                        usuarioLogado.getUuidId(),
+                        "Sócio Administrador",
+                        StatusVinculo.APROVADO,
+                        usuarioLogado.getUuidId(),
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                );
+                empresaUsuarioRepository.save(vinculoAprovado);
+            }
+        }
+
+        return empresa;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConviteEmpresaDTO> listarConvitesEmpresaParaEmpresario(Usuario usuario) {
+        if (usuario == null || usuario.getUuidId() == null) {
+            return Collections.emptyList();
+        }
+
+        List<EmpresaUsuario> vinculos = empresaUsuarioRepository.findByUsuarioId(usuario.getUuidId());
+        List<ConviteEmpresaDTO> convites = new ArrayList<>();
+
+        for (EmpresaUsuario v : vinculos) {
+            if (v.getStatusVinculo() == StatusVinculo.PENDENTE) {
+                Optional<Empresa> empOpt = empresaRepository.findByUuidId(v.getEmpresaId());
+                if (empOpt.isPresent()) {
+                    Empresa emp = empOpt.get();
+                    OrganizacaoContabil org = null;
+                    Usuario contador = null;
+
+                    if (emp.getOrganizacaoContabilId() != null) {
+                        org = organizacaoContabilRepository.findById(emp.getOrganizacaoContabilId()).orElse(null);
+                        if (entityManager != null) {
+                            try {
+                                List<Usuario> usersOrg = entityManager.createQuery(
+                                        "SELECT u FROM Usuario u WHERE u.organizacaoContabilId = :orgId", Usuario.class)
+                                        .setParameter("orgId", emp.getOrganizacaoContabilId())
+                                        .getResultList();
+                                if (!usersOrg.isEmpty()) {
+                                    contador = usersOrg.get(0);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    }
+
+                    convites.add(ConviteEmpresaDTO.builder()
+                            .vinculoId(v.getId())
+                            .empresaId(emp.getId())
+                            .empresaUuid(emp.getUuidId())
+                            .razaoSocial(emp.getRazaoSocial())
+                            .nomeFantasia(emp.getNomeFantasia())
+                            .cnpj(emp.getCnpj())
+                            .dataInicioAtividade(emp.getDataInicioAtividade() != null ? emp.getDataInicioAtividade().toString() : null)
+                            .nomeContador(contador != null ? contador.getNome() : "Contador Responsável")
+                            .cpfContador(contador != null ? contador.getCpf() : "")
+                            .nomeOrganizacao(org != null ? org.getNome() : "Escritório Contábil")
+                            .cnpjOrganizacao(org != null ? org.getCnpj() : "")
+                            .crc(org != null ? org.getCrc() : "")
+                            .funcao(v.getFuncao())
+                            .statusVinculo(v.getStatusVinculo())
+                            .createdAt(v.getCreatedAt())
+                            .build());
+                }
+            }
+        }
+
+        return convites;
+    }
+
+    @Transactional
+    public void responderConviteEmpresa(String vinculoId, boolean aceitar, Usuario usuario) {
+        EmpresaUsuario vinc = empresaUsuarioRepository.findById(vinculoId)
+                .orElseThrow(() -> new IllegalArgumentException("Convite não encontrado: " + vinculoId));
+
+        if (!vinc.getUsuarioId().equals(usuario.getUuidId())) {
+            throw new IllegalArgumentException("Acesso negado: o convite não pertence ao usuário logado");
+        }
+
+        if (aceitar) {
+            vinc.setStatusVinculo(StatusVinculo.APROVADO);
+            vinc.setAprovadoPor(usuario.getUuidId());
+            vinc.setAprovadoEm(LocalDateTime.now());
+            empresaUsuarioRepository.save(vinc);
+
+            empresaRepository.findByUuidId(vinc.getEmpresaId()).ifPresent(emp -> {
+                usuario.getEmpresas().add(emp);
+                usuarioRepository.save(usuario);
+            });
+        } else {
+            vinc.setStatusVinculo(StatusVinculo.REJEITADO);
+            empresaUsuarioRepository.save(vinc);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<Empresa> listarEmpresasPermitidasEntidade(Usuario usuario) {
+        if (usuario == null) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Empresa> map = new LinkedHashMap<>();
+
+        // Se for Contador, carrega apenas as empresas da sua Organização Contábil
+        if (usuario.getTipoPerfil() == TipoPerfil.CONTABILISTA || usuario.getTipo() == TipoUsuario.ADMINISTRADOR_CONTABIL) {
+            if (usuario.getOrganizacaoContabilId() != null) {
+                List<Empresa> emps = empresaRepository.findByOrganizacaoContabilId(usuario.getOrganizacaoContabilId());
+                for (Empresa emp : emps) {
+                    map.put(emp.getUuidId() != null ? emp.getUuidId() : String.valueOf(emp.getId()), emp);
+                }
+            }
+        }
+
+        // Vínculos com status APROVADO em empresa_usuarios
+        if (usuario.getUuidId() != null) {
+            List<EmpresaUsuario> vinculos = empresaUsuarioRepository.findByUsuarioId(usuario.getUuidId());
+            for (EmpresaUsuario v : vinculos) {
+                if (v.getStatusVinculo() == StatusVinculo.APROVADO) {
+                    empresaRepository.findByUuidId(v.getEmpresaId()).ifPresent(emp -> {
+                        map.put(emp.getUuidId() != null ? emp.getUuidId() : String.valueOf(emp.getId()), emp);
+                    });
+                }
+            }
+        }
+
+        // Se for Empresário ou Colaborador, carregar vínculos de usuario_empresa apenas se não houver pendência/rejeição
+        if (usuario.getEmpresas() != null && (usuario.getTipoPerfil() != TipoPerfil.CONTABILISTA && usuario.getTipo() != TipoUsuario.ADMINISTRADOR_CONTABIL)) {
+            for (Empresa emp : usuario.getEmpresas()) {
+                String uuid = emp.getUuidId() != null ? emp.getUuidId() : String.valueOf(emp.getId());
+                Optional<EmpresaUsuario> vincOpt = empresaUsuarioRepository.findByEmpresaIdAndUsuarioId(uuid, usuario.getUuidId());
+                if (vincOpt.isEmpty() || vincOpt.get().getStatusVinculo() == StatusVinculo.APROVADO) {
+                    map.put(uuid, emp);
+                }
+            }
+        }
+
+        return new ArrayList<>(map.values());
+    }
+
     @Transactional
     public EmpresaUsuario convidarPorCpf(String cpf, String funcao, String empresaIdIdentificador) {
         String cleanCpf = CpfUtils.unmask(cpf);
@@ -582,9 +961,6 @@ public class AuthService {
                 LocalDateTime.now()
         );
 
-        usuario.getEmpresas().add(empresa);
-        usuarioRepository.save(usuario);
-
         return empresaUsuarioRepository.save(novoVinculo);
     }
 
@@ -621,6 +997,11 @@ public class AuthService {
                     }
                 }
             });
+
+            // Se o usuário não tem nenhuma empresa autorizada, não deve ver nenhuma pendência!
+            if (empresasPermitidas.isEmpty()) {
+                return Collections.emptyList();
+            }
         }
 
         List<VinculoPendenteDTO> resultado = new ArrayList<>();
@@ -697,18 +1078,15 @@ public class AuthService {
         if (identificador == null || identificador.isBlank()) return Optional.empty();
         String trimmed = identificador.trim();
 
-        // 1. Tentar por ID numérico
         try {
             Long numId = Long.parseLong(trimmed);
             Optional<Empresa> byId = empresaRepository.findById(numId);
             if (byId.isPresent()) return byId;
         } catch (NumberFormatException ignored) {}
 
-        // 2. Tentar por UUID
         Optional<Empresa> byUuid = empresaRepository.findByUuidId(trimmed);
         if (byUuid.isPresent()) return byUuid;
 
-        // 3. Tentar por CNPJ
         String cleanCnpj = CnpjUtils.unmask(trimmed);
         if (!cleanCnpj.isEmpty()) {
             return empresaRepository.findByCnpj(cleanCnpj);
@@ -764,7 +1142,7 @@ public class AuthService {
             }
         }
 
-        // 3. Empresas da relação ManyToMany legada
+        // 3. Empresas da relação ManyToMany legada (apenas se for aprovado)
         if (usuario.getEmpresas() != null) {
             for (Empresa emp : usuario.getEmpresas()) {
                 if (emp.getUuidId() != null && !map.containsKey(emp.getUuidId())) {
@@ -775,7 +1153,7 @@ public class AuthService {
                             .nomeFantasia(emp.getNomeFantasia())
                             .cnpj(emp.getCnpj())
                             .statusVinculo(StatusVinculo.APROVADO)
-                            .funcao("Colaborador")
+                            .funcao("Sócio Administrador")
                             .build());
                 }
             }

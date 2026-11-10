@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -108,20 +109,56 @@ public class ContaReceberController {
         }
     }
 
+    @PostMapping("/preview-xml-lote")
+    public ResponseEntity<List<ContaReceberService.ItemPreviewXmlLote>> previewXmlLote(
+            @RequestParam String empresaId,
+            @RequestParam("arquivos") MultipartFile[] arquivos) {
+        if (arquivos == null || arquivos.length == 0) {
+            throw new IllegalArgumentException("Nenhum arquivo XML foi enviado");
+        }
+        List<ContaReceberService.ArquivoXmlInput> inputs = new ArrayList<>();
+        for (MultipartFile arq : arquivos) {
+            try {
+                inputs.add(new ContaReceberService.ArquivoXmlInput(arq.getOriginalFilename(), arq.getBytes()));
+            } catch (IOException e) {
+                inputs.add(new ContaReceberService.ArquivoXmlInput(arq.getOriginalFilename(), new byte[0]));
+            }
+        }
+        return ResponseEntity.ok(service.previewXmlLote(empresaId, inputs, leitorXmlNfeService));
+    }
+
     @PostMapping("/importar-xml")
     public ResponseEntity<List<ContaReceber>> importarXml(
             @RequestParam String empresaId,
             @RequestParam("arquivo") MultipartFile arquivo,
-            @RequestParam(name = "atualizarFaturamento", required = false, defaultValue = "false") boolean atualizarFaturamento) {
+            @RequestParam(name = "atualizarFaturamento", required = false, defaultValue = "true") boolean atualizarFaturamento) {
         if (arquivo == null || arquivo.isEmpty()) {
             throw new IllegalArgumentException("O arquivo XML é obrigatório");
         }
         try {
             return ResponseEntity.ok(service.importarXml(
-                    empresaId, arquivo.getInputStream(), leitorXmlNfeService, atualizarFaturamento));
+                    empresaId, arquivo.getInputStream(), leitorXmlNfeService, true));
         } catch (IOException e) {
             throw new IllegalArgumentException("Não foi possível ler o arquivo XML", e);
         }
+    }
+
+    @PostMapping("/importar-xml-lote")
+    public ResponseEntity<ContaReceberService.ResultadoImportacaoXmlLote> importarXmlLote(
+            @RequestParam String empresaId,
+            @RequestParam("arquivos") MultipartFile[] arquivos) {
+        if (arquivos == null || arquivos.length == 0) {
+            throw new IllegalArgumentException("Nenhum arquivo XML foi enviado");
+        }
+        List<ContaReceberService.ArquivoXmlInput> inputs = new ArrayList<>();
+        for (MultipartFile arq : arquivos) {
+            try {
+                inputs.add(new ContaReceberService.ArquivoXmlInput(arq.getOriginalFilename(), arq.getBytes()));
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Falha ao ler arquivo: " + arq.getOriginalFilename(), e);
+            }
+        }
+        return ResponseEntity.ok(service.importarXmlLote(empresaId, inputs, leitorXmlNfeService));
     }
 
     @GetMapping("/clientes")

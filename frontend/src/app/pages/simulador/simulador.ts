@@ -3,7 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FatorRService } from '../../services/fator-r.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
-import { ContaReceberService, DadosNotaFiscalDTO } from '../../services/conta-receber.service';
+import {
+  ContaReceberService,
+  DadosNotaFiscalDTO,
+  ItemPreviewXmlLoteDTO
+} from '../../services/conta-receber.service';
 import { Empresa, SimulacaoTributaria, ProjecaoCenario, FaturamentoHistorico } from '../../models/models';
 import { Subscription } from 'rxjs';
 
@@ -36,14 +40,31 @@ export class SimuladorComponent implements OnInit, OnDestroy {
   modalErro: string | null = null;
   salvandoDados = false;
 
-  // Modal Importação de XML NF-e direto no Simulador
+  // Modal Importação de XML NF-e em Lote direto no Simulador
   mostrarModalXml = false;
-  arquivoXml: File | null = null;
+  arquivosXml: File[] = [];
   carregandoPreview = false;
   importandoXml = false;
-  previewDados: DadosNotaFiscalDTO | null = null;
-  atualizarFaturamento = true;
+  itensPreviewLote: ItemPreviewXmlLoteDTO[] = [];
   erroPreview = '';
+
+  get totalArquivosXml(): number {
+    return this.arquivosXml.length;
+  }
+
+  get totalValidasXml(): number {
+    return this.itensPreviewLote.filter(i => i.valido).length;
+  }
+
+  get totalErrosOuBloqueiosXml(): number {
+    return this.itensPreviewLote.filter(i => !i.valido).length;
+  }
+
+  get valorTotalValidasXml(): number {
+    return this.itensPreviewLote
+      .filter(i => i.valido && i.dados?.valorTotal)
+      .reduce((acc, curr) => acc + (curr.dados?.valorTotal || 0), 0);
+  }
 
   meses = [
     { valor: 1, nome: 'Janeiro' }, { valor: 2, nome: 'Fevereiro' },
@@ -248,77 +269,99 @@ export class SimuladorComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ===================== MODAL IMPORTAR XML NO SIMULADOR =====================
+  // ===================== MODAL IMPORTAR XML EM LOTE NO SIMULADOR =====================
 
   abrirModalXml(): void {
     this.mostrarModalXml = true;
-    this.arquivoXml = null;
-    this.previewDados = null;
-    this.erroPreview = '';
-    this.atualizarFaturamento = true;
-  }
-
-  fecharModalXml(): void {
-    this.mostrarModalXml = false;
-    this.arquivoXml = null;
-    this.previewDados = null;
+    this.arquivosXml = [];
+    this.itensPreviewLote = [];
     this.erroPreview = '';
     this.carregandoPreview = false;
     this.importandoXml = false;
   }
 
-  selecionarArquivoXml(event: Event): void {
+  fecharModalXml(): void {
+    this.mostrarModalXml = false;
+    this.arquivosXml = [];
+    this.itensPreviewLote = [];
+    this.erroPreview = '';
+    this.carregandoPreview = false;
+    this.importandoXml = false;
+  }
+
+  selecionarArquivosXml(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.arquivoXml = input.files[0];
-      this.obterPreview();
+      this.arquivosXml = Array.from(input.files);
+      this.obterPreviewLote();
     }
   }
 
-  obterPreview(): void {
-    if (!this.arquivoXml || !this.empresaSelecionada) return;
+  removerArquivoXml(index: number): void {
+    if (index >= 0 && index < this.arquivosXml.length) {
+      this.arquivosXml.splice(index, 1);
+      this.itensPreviewLote.splice(index, 1);
+      if (this.arquivosXml.length === 0) {
+        this.itensPreviewLote = [];
+        this.erroPreview = '';
+      }
+    }
+  }
+
+  obterPreviewLote(): void {
+    if (this.arquivosXml.length === 0 || !this.empresaSelecionada) return;
     const empresaIdStr = this.empresaSelecionada.uuidId || String(this.empresaSelecionada.id);
 
     this.carregandoPreview = true;
     this.erroPreview = '';
-    this.previewDados = null;
+    this.itensPreviewLote = [];
 
-    this.contaReceberService.previewXml(empresaIdStr, this.arquivoXml).subscribe({
-      next: dados => {
-        this.previewDados = dados;
+    this.contaReceberService.previewXmlLote(empresaIdStr, this.arquivosXml).subscribe({
+      next: itens => {
+        this.itensPreviewLote = itens;
         this.carregandoPreview = false;
-        if (dados.periodoEncerrado) {
-          this.erroPreview = dados.mensagemAlertaPeriodo || 'Atenção: A data de emissão desta nota pertence a um período já encerrado. Abra o período para prosseguir.';
-        }
       },
       error: err => {
         this.carregandoPreview = false;
-        this.erroPreview = err.error?.message || 'Erro ao processar pré-visualização do XML.';
+        this.erroPreview = err.error?.message || 'Erro ao processar pré-visualização dos arquivos XML.';
       }
     });
   }
 
   confirmarImportacaoXml(): void {
-    if (!this.arquivoXml || !this.empresaSelecionada) return;
-    if (this.previewDados?.periodoEncerrado) {
-      this.erroPreview = 'Não é possível importar a nota em um período já encerrado. Abra a competência no Simulador antes de importar.';
+    if (this.arquivosXml.length === 0 || !this.empresaSelecionada) return;
+    const empresaIdStr = this.empresaSelecionada.uuidId || String(this.empresaSelecionada.id);
+
+    // Filtra apenas os arquivos válidos
+    const nomesValidos = new Set(
+      this.itensPreviewLote
+        .filter(item => item.valido)
+        .map(item => item.nomeArquivo)
+    );
+
+    const arquivosAImportar = this.arquivosXml.filter(arq => nomesValidos.has(arq.name));
+
+    if (arquivosAImportar.length === 0) {
+      this.erroPreview = 'Nenhuma nota fiscal válida para importar no lote.';
       return;
     }
 
-    const empresaIdStr = this.empresaSelecionada.uuidId || String(this.empresaSelecionada.id);
     this.importandoXml = true;
     this.erroPreview = '';
 
-    this.contaReceberService.importarXml(empresaIdStr, this.arquivoXml, this.atualizarFaturamento).subscribe({
-      next: titulos => {
+    this.contaReceberService.importarXmlLote(empresaIdStr, arquivosAImportar).subscribe({
+      next: res => {
         this.importandoXml = false;
-        this.sucesso = `Nota fiscal importada com sucesso: ${titulos.length} título(s) gerado(s) e Faturamento Mensal atualizado!`;
+        this.sucesso = `Importação em lote concluída: ${res.totalImportados} nota(s) importada(s) com sucesso. ${res.titulosGerados.length} título(s) gerado(s) e Faturamento Mensal atualizado!`;
+        if (res.mensagensErro && res.mensagensErro.length > 0) {
+          this.erro = `Algumas notas tiveram restrições: ${res.mensagensErro.join('; ')}`;
+        }
         this.fecharModalXml();
         this.simular();
       },
       error: err => {
         this.importandoXml = false;
-        this.erroPreview = err.error?.message || err.error?.erro || 'Erro ao importar XML da nota fiscal.';
+        this.erroPreview = err.error?.message || err.error?.erro || 'Erro ao importar lote de notas fiscais.';
       }
     });
   }

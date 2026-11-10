@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface OrganizacaoContabilRepository extends JpaRepository<OrganizacaoContabil, String> {
     Optional<OrganizacaoContabil> findByCnpj(String cnpj);
+    Optional<OrganizacaoContabil> findByCrcIgnoreCase(String crc);
 }

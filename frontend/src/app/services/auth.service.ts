@@ -27,6 +27,16 @@ export interface AuthResponse {
   empresas?: EmpresaVinculada[];
 }
 
+export interface ContadorResumo {
+  id: string;
+  usuarioId: string;
+  nomeContador: string;
+  cpfContador: string;
+  nomeOrganizacao: string;
+  cnpjOrganizacao: string;
+  crc: string;
+}
+
 export interface RegisterContadorDTO {
   nome: string;
   email: string;
@@ -45,6 +55,7 @@ export interface RegisterEmpresarioDTO {
   razaoSocial: string;
   nomeFantasia?: string;
   cnpj: string;
+  contadorIdentificador: string;
 }
 
 export interface RegisterUsuarioDTO {
@@ -86,6 +97,7 @@ export class AuthService {
       localStorage.setItem('fator_r_token', response.token);
     }
     localStorage.setItem('fator_r_user', JSON.stringify(response));
+    localStorage.removeItem('empresaSelecionada');
     this.currentUserSubject.next(response);
   }
 
@@ -117,6 +129,10 @@ export class AuthService {
     );
   }
 
+  listarContadores(): Observable<ContadorResumo[]> {
+    return this.http.get<ContadorResumo[]>(`${this.baseUrl}/contadores`);
+  }
+
   forgotPassword(identificador: string): Observable<{ message: string; resetPasswordToken?: string }> {
     return this.http.post<{ message: string; resetPasswordToken?: string }>(`${this.baseUrl}/forgot-password`, {
       login: identificador,
@@ -135,6 +151,7 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem('fator_r_user');
     localStorage.removeItem('fator_r_token');
+    localStorage.removeItem('empresaSelecionada');
     this.currentUserSubject.next(null);
   }
 

@@ -16,6 +16,8 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -69,6 +71,7 @@ class AuthServiceTest {
         usuarioMock.setTipoPerfil(TipoPerfil.CONTABILISTA);
         usuarioMock.setTipo(TipoUsuario.ADMINISTRADOR_CONTABIL);
         usuarioMock.setStatus(StatusUsuario.ATIVO);
+        usuarioMock.setOrganizacaoContabilId("org-uuid-001");
     }
 
     @Test
@@ -135,6 +138,123 @@ class AuthServiceTest {
         assertEquals(TipoUsuario.ADMINISTRADOR_CONTABIL, response.getTipo());
         assertNotNull(response.getToken());
         assertTrue(jwtUtils.validateToken(response.getToken()));
+    }
+
+    @Test
+    void deveExigirContadorAoCadastrarEmpresario() {
+        AuthService.RegisterEmpresarioRequest request = new AuthService.RegisterEmpresarioRequest(
+                "Empresário Silva",
+                "empresario@teste.com",
+                "52998224725",
+                "segredo123",
+                "Empresa Silva Ltda",
+                "Silva Tech",
+                "12ABC345000199",
+                null // Sem indicar contador
+        );
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                authService.registerEmpresario(request)
+        );
+
+        assertTrue(ex.getMessage().contains("indicar o Contador"));
+    }
+
+    @Test
+    void deveCadastrarEmpresarioIndicandoContador() {
+        OrganizacaoContabil org = new OrganizacaoContabil("org-123", "Contabilidade Central", "12ABC345000199", "CRC-SP 123456/O", LocalDateTime.now(), LocalDateTime.now());
+        when(organizacaoContabilRepository.findById("org-123")).thenReturn(Optional.of(org));
+
+        AuthService.RegisterEmpresarioRequest request = new AuthService.RegisterEmpresarioRequest(
+                "Empresário Silva",
+                "empresario@teste.com",
+                "52998224725",
+                "segredo123",
+                "Empresa Silva Ltda",
+                "Silva Tech",
+                "98XYZ765000102",
+                "org-123"
+        );
+
+        when(usuarioRepository.findByCpf("52998224725")).thenReturn(Optional.empty());
+        when(usuarioRepository.findByEmail("empresario@teste.com")).thenReturn(Optional.empty());
+        when(empresaRepository.findByCnpj("98XYZ765000102")).thenReturn(Optional.empty());
+        when(empresaRepository.save(any(Empresa.class))).thenAnswer(invocation -> {
+            Empresa e = invocation.getArgument(0);
+            e.setId(10L);
+            return e;
+        });
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> {
+            Usuario u = invocation.getArgument(0);
+            u.setId(20L);
+            return u;
+        });
+
+        AuthResponseDTO response = authService.registerEmpresario(request);
+
+        assertNotNull(response);
+        assertEquals(TipoPerfil.EMPRESARIO, response.getTipoPerfil());
+        verify(empresaRepository).save(argThat(e -> "org-123".equals(e.getOrganizacaoContabilId())));
+    }
+
+    @Test
+    void deveContadorCriarEmpresaGerandoVinculoPendenteParaEmpresario() {
+        AuthService.CriarEmpresaRequest request = new AuthService.CriarEmpresaRequest(
+                "Nova Empresa Clinica",
+                "Clinica Saúde",
+                "12ABC345000101",
+                "2024-01",
+                "52998224725", // CPF do empresário
+                "Dr. Roberto",
+                null
+        );
+
+        when(empresaRepository.findByCnpj("12ABC345000101")).thenReturn(Optional.empty());
+        when(empresaRepository.save(any(Empresa.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioRepository.findByCpf("52998224725")).thenReturn(Optional.empty());
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Empresa criada = authService.criarEmpresaComVinculo(request, usuarioMock);
+
+        assertNotNull(criada);
+        assertEquals("org-uuid-001", criada.getOrganizacaoContabilId());
+        verify(empresaUsuarioRepository).save(argThat(v ->
+                v.getStatusVinculo() == StatusVinculo.PENDENTE && "Sócio Administrador".equals(v.getFuncao())
+        ));
+    }
+
+    @Test
+    void devePermitirEmpresarioAceitarConviteDeEmpresa() {
+        Usuario empresario = new Usuario();
+        empresario.setId(5L);
+        empresario.setUuidId("usr-empresario-55");
+
+        EmpresaUsuario vinculoPendente = new EmpresaUsuario(
+                "vinc-convite-001",
+                "emp-uuid-clinica",
+                "usr-empresario-55",
+                "Sócio Administrador",
+                StatusVinculo.PENDENTE,
+                "usr-uuid-001",
+                null,
+                LocalDateTime.now()
+        );
+
+        Empresa empresa = new Empresa();
+        empresa.setUuidId("emp-uuid-clinica");
+        empresa.setRazaoSocial("Clinica Teste");
+
+        when(empresaUsuarioRepository.findById("vinc-convite-001")).thenReturn(Optional.of(vinculoPendente));
+        when(empresaRepository.findByUuidId("emp-uuid-clinica")).thenReturn(Optional.of(empresa));
+
+        authService.responderConviteEmpresa("vinc-convite-001", true, empresario);
+
+        assertEquals(StatusVinculo.APROVADO, vinculoPendente.getStatusVinculo());
+        assertEquals("usr-empresario-55", vinculoPendente.getAprovadoPor());
+        assertNotNull(vinculoPendente.getAprovadoEm());
+        verify(empresaUsuarioRepository).save(vinculoPendente);
+        verify(usuarioRepository).save(empresario);
+        assertTrue(empresario.getEmpresas().contains(empresa));
     }
 
     @Test

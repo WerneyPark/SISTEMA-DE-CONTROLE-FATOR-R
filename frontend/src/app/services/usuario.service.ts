@@ -40,6 +40,24 @@ export interface VinculoPendente {
   createdAt: string;
 }
 
+export interface ConviteEmpresa {
+  vinculoId: string;
+  empresaId: number;
+  empresaUuid: string;
+  razaoSocial: string;
+  nomeFantasia?: string;
+  cnpj: string;
+  dataInicioAtividade?: string;
+  nomeContador?: string;
+  cpfContador?: string;
+  nomeOrganizacao?: string;
+  cnpjOrganizacao?: string;
+  crc?: string;
+  funcao?: string;
+  statusVinculo: string;
+  createdAt: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -77,5 +95,13 @@ export class UsuarioService {
       status,
       aprovadoPor
     });
+  }
+
+  listarMeusConvites(): Observable<ConviteEmpresa[]> {
+    return this.http.get<ConviteEmpresa[]>(`${this.baseUrl}/meus-convites`);
+  }
+
+  responderConvite(vinculoId: string, aceitar: boolean): Observable<any> {
+    return this.http.post(`${this.baseUrl}/meus-convites/${vinculoId}/responder`, { aceitar });
   }
 }

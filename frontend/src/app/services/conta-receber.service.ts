@@ -29,6 +29,24 @@ export interface DadosNotaFiscalDTO {
   mensagemAlertaPeriodo?: string;
 }
 
+export interface ItemPreviewXmlLoteDTO {
+  nomeArquivo: string;
+  valido: boolean;
+  periodoEncerrado: boolean;
+  jaImportada: boolean;
+  mensagemErro?: string;
+  dados?: DadosNotaFiscalDTO;
+}
+
+export interface ResultadoImportacaoXmlLoteDTO {
+  totalArquivos: number;
+  totalImportados: number;
+  totalIgnoradosOuErros: number;
+  valorTotalImportado: number;
+  titulosGerados: ContaReceberDTO[];
+  mensagensErro: string[];
+}
+
 export interface ContaReceberPage {
   content: ContaReceberDTO[];
   totalElements: number;
@@ -113,15 +131,29 @@ export class ContaReceberService {
     return this.http.post<DadosNotaFiscalDTO>(`${this.url}/preview-xml`, formData);
   }
 
-  importarXml(empresaId: string, arquivo: File, atualizarFaturamento = false): Observable<ContaReceberDTO[]> {
+  previewXmlLote(empresaId: string, arquivos: File[]): Observable<ItemPreviewXmlLoteDTO[]> {
+    const formData = new FormData();
+    formData.append('empresaId', empresaId);
+    for (const arq of arquivos) {
+      formData.append('arquivos', arq);
+    }
+    return this.http.post<ItemPreviewXmlLoteDTO[]>(`${this.url}/preview-xml-lote`, formData);
+  }
+
+  importarXml(empresaId: string, arquivo: File, atualizarFaturamento = true): Observable<ContaReceberDTO[]> {
     const formData = new FormData();
     formData.append('empresaId', empresaId);
     formData.append('arquivo', arquivo);
-    let params = new HttpParams();
-    if (atualizarFaturamento) {
-      params = params.set('atualizarFaturamento', 'true');
+    return this.http.post<ContaReceberDTO[]>(`${this.url}/importar-xml`, formData);
+  }
+
+  importarXmlLote(empresaId: string, arquivos: File[]): Observable<ResultadoImportacaoXmlLoteDTO> {
+    const formData = new FormData();
+    formData.append('empresaId', empresaId);
+    for (const arq of arquivos) {
+      formData.append('arquivos', arq);
     }
-    return this.http.post<ContaReceberDTO[]>(`${this.url}/importar-xml`, formData, { params });
+    return this.http.post<ResultadoImportacaoXmlLoteDTO>(`${this.url}/importar-xml-lote`, formData);
   }
 
   listarClientes(empresaId: string): Observable<ClienteFornecedorDTO[]> {

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -64,6 +65,11 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("error", "Erro ao cadastrar colaborador"));
         }
+    }
+
+    @GetMapping("/contadores")
+    public ResponseEntity<List<AuthService.ContadorResumoDTO>> listarContadores() {
+        return ResponseEntity.ok(authService.listarContadoresDisponiveis());
     }
 
     @PostMapping("/forgot-password")

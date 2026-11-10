@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { EmpresaService } from '../../services/empresa.service';
-import { AuthService } from '../../services/auth.service';
+import { EmpresaService, CriarEmpresaDTO } from '../../services/empresa.service';
+import { AuthService, ContadorResumo } from '../../services/auth.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
-import { UsuarioService, Usuario, NovoUsuarioEmpresaDTO } from '../../services/usuario.service';
+import { UsuarioService, Usuario, NovoUsuarioEmpresaDTO, ConviteEmpresa } from '../../services/usuario.service';
 import { Empresa } from '../../models/models';
 import { maskCnpj, unmaskCnpj } from '../../shared/utils/cnpj';
 import { maskCpf, unmaskCpf } from '../../shared/utils/formatters';
@@ -19,12 +19,29 @@ import { maskCpf, unmaskCpf } from '../../shared/utils/formatters';
 export class EmpresasComponent implements OnInit {
   empresas: Empresa[] = [];
   isAdmin = false;
+  isEmpresario = false;
+  podeCriarEmpresa = false;
+
   erro: string | null = null;
   sucesso: string | null = null;
 
+  // --- CONVITES PENDENTES (Empresário) ---
+  convitesPendentes: ConviteEmpresa[] = [];
+  processandoConviteId: string | null = null;
+
   // --- MODAL EMPRESA ---
   mostrarModalEmpresa = false;
-  novaEmpresaForm: Empresa = { razaoSocial: '', cnpj: '', dataInicioAtividade: '' };
+  novaEmpresaForm = {
+    razaoSocial: '',
+    nomeFantasia: '',
+    cnpj: '',
+    dataInicioAtividade: '',
+    cpfEmpresario: '',
+    nomeEmpresario: '',
+    contadorIdentificador: ''
+  };
+  contadorManual = '';
+  contadores: ContadorResumo[] = [];
 
   // --- MODAL USUÁRIO ---
   mostrarModalUsuario = false;
@@ -41,7 +58,12 @@ export class EmpresasComponent implements OnInit {
 
   ngOnInit() {
     this.isAdmin = this.authService.isAdmin();
+    this.isEmpresario = this.authService.isEmpresario();
+    this.podeCriarEmpresa = this.isAdmin || this.isEmpresario;
+
     this.carregarEmpresas();
+    this.carregarConvitesPendentes();
+    this.carregarContadores();
   }
 
   carregarEmpresas() {
@@ -54,8 +76,73 @@ export class EmpresasComponent implements OnInit {
     });
   }
 
+  carregarConvitesPendentes() {
+    if (this.isEmpresario) {
+      this.usuarioService.listarMeusConvites().subscribe({
+        next: (convites) => this.convitesPendentes = convites,
+        error: () => this.convitesPendentes = []
+      });
+    }
+  }
+
+  carregarContadores() {
+    this.authService.listarContadores().subscribe({
+      next: (dados) => {
+        this.contadores = dados;
+        if (dados.length > 0 && !this.novaEmpresaForm.contadorIdentificador) {
+          this.novaEmpresaForm.contadorIdentificador = dados[0].id;
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  aceitarConvite(convite: ConviteEmpresa) {
+    this.processandoConviteId = convite.vinculoId;
+    this.usuarioService.responderConvite(convite.vinculoId, true).subscribe({
+      next: () => {
+        this.processandoConviteId = null;
+        this.sucesso = 'Empresa e contador aceitos com sucesso!';
+        this.carregarConvitesPendentes();
+        this.carregarEmpresas();
+        setTimeout(() => this.sucesso = null, 3000);
+      },
+      error: (err) => {
+        this.processandoConviteId = null;
+        this.erro = err.error?.error || 'Erro ao aceitar convite.';
+      }
+    });
+  }
+
+  recusarConvite(convite: ConviteEmpresa) {
+    if (confirm(`Deseja realmente recusar o vínculo com a empresa ${convite.razaoSocial} e o contador ${convite.nomeContador}?`)) {
+      this.processandoConviteId = convite.vinculoId;
+      this.usuarioService.responderConvite(convite.vinculoId, false).subscribe({
+        next: () => {
+          this.processandoConviteId = null;
+          this.sucesso = 'Convite recusado.';
+          this.carregarConvitesPendentes();
+          setTimeout(() => this.sucesso = null, 3000);
+        },
+        error: (err) => {
+          this.processandoConviteId = null;
+          this.erro = err.error?.error || 'Erro ao recusar convite.';
+        }
+      });
+    }
+  }
+
   abrirModalEmpresa(): void {
-    this.novaEmpresaForm = { razaoSocial: '', cnpj: '', dataInicioAtividade: '' };
+    this.novaEmpresaForm = {
+      razaoSocial: '',
+      nomeFantasia: '',
+      cnpj: '',
+      dataInicioAtividade: '',
+      cpfEmpresario: '',
+      nomeEmpresario: '',
+      contadorIdentificador: this.contadores.length > 0 ? this.contadores[0].id : ''
+    };
+    this.contadorManual = '';
     this.mostrarModalEmpresa = true;
   }
 
@@ -67,28 +154,71 @@ export class EmpresasComponent implements OnInit {
     this.novaEmpresaForm.cnpj = maskCnpj(event.target.value);
   }
 
+  aplicarMascaraCPFEmpresario(event: any): void {
+    this.novaEmpresaForm.cpfEmpresario = maskCpf(event.target.value);
+  }
+
+  onContadorManualChange(): void {
+    if (this.contadorManual) {
+      this.novaEmpresaForm.contadorIdentificador = this.contadorManual.trim();
+    }
+  }
+
   salvarNovaEmpresa(): void {
-    if (!this.novaEmpresaForm.razaoSocial || !this.novaEmpresaForm.cnpj) return;
-    
-    const empresaParaSalvar = { ...this.novaEmpresaForm };
-    empresaParaSalvar.cnpj = unmaskCnpj(empresaParaSalvar.cnpj);
-    if (empresaParaSalvar.dataInicioAtividade && empresaParaSalvar.dataInicioAtividade.length === 7) {
-      empresaParaSalvar.dataInicioAtividade = empresaParaSalvar.dataInicioAtividade + '-01';
+    if (!this.novaEmpresaForm.razaoSocial || !this.novaEmpresaForm.cnpj) {
+      this.erro = 'Preencha a Razão Social e o CNPJ da empresa.';
+      return;
     }
 
-    this.empresaService.criar(empresaParaSalvar).subscribe({
+    if (this.isAdmin && !this.novaEmpresaForm.cpfEmpresario) {
+      this.erro = 'O Contador deve informar o CPF do Empresário responsável pela empresa.';
+      return;
+    }
+
+    let contadorFinal = this.novaEmpresaForm.contadorIdentificador;
+    if (this.isEmpresario) {
+      if (this.novaEmpresaForm.contadorIdentificador === 'OUTRO') {
+        contadorFinal = this.contadorManual.trim();
+      }
+      if (!contadorFinal) {
+        this.erro = 'O Empresário deve indicar o Contador ou Escritório Contábil responsável.';
+        return;
+      }
+    }
+
+    const payload: CriarEmpresaDTO = {
+      razaoSocial: this.novaEmpresaForm.razaoSocial.trim(),
+      nomeFantasia: this.novaEmpresaForm.nomeFantasia ? this.novaEmpresaForm.nomeFantasia.trim() : undefined,
+      cnpj: unmaskCnpj(this.novaEmpresaForm.cnpj),
+      dataInicioAtividade: this.novaEmpresaForm.dataInicioAtividade,
+      cpfEmpresario: this.isAdmin ? unmaskCpf(this.novaEmpresaForm.cpfEmpresario) : undefined,
+      nomeEmpresario: this.isAdmin ? this.novaEmpresaForm.nomeEmpresario : undefined,
+      contadorIdentificador: this.isEmpresario ? contadorFinal : undefined
+    };
+
+    if (payload.dataInicioAtividade && payload.dataInicioAtividade.length === 7) {
+      payload.dataInicioAtividade = payload.dataInicioAtividade + '-01';
+    }
+
+    this.empresaService.criar(payload).subscribe({
       next: (novaEmpresa) => {
-        this.sucesso = 'Empresa cadastrada com sucesso!';
+        if (this.isAdmin) {
+          this.sucesso = `Empresa ${novaEmpresa.razaoSocial} cadastrada! O empresário receberá um aviso ao entrar para aceitar a empresa e sua contabilidade.`;
+        } else {
+          this.sucesso = `Empresa ${novaEmpresa.razaoSocial} cadastrada com sucesso e vinculada ao contador indicado!`;
+        }
         this.carregarEmpresas();
         this.fecharModalEmpresa();
-        setTimeout(() => this.sucesso = null, 3000);
+        setTimeout(() => this.sucesso = null, 5000);
       },
-      error: () => this.erro = 'Erro ao cadastrar nova empresa.'
+      error: (err) => {
+        this.erro = err.error?.error || 'Erro ao cadastrar nova empresa.';
+      }
     });
   }
 
   excluirEmpresa(empresa: Empresa): void {
-    if (!this.isAdmin) return;
+    if (!this.isAdmin && !this.isEmpresario) return;
     if (confirm(`Tem certeza que deseja excluir a empresa ${empresa.razaoSocial}? Esta ação não pode ser desfeita e removerá todos os dados associados.`)) {
       this.empresaService.excluir(empresa.id!).subscribe({
         next: () => {

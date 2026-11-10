@@ -5,6 +5,7 @@ import com.fatorr.backend.dto.EmpresaResumoDTO;
 import com.fatorr.backend.dto.NovoUsuarioEmpresaDTO;
 import com.fatorr.backend.dto.UsuarioDTO;
 import com.fatorr.backend.repository.EmpresaRepository;
+import com.fatorr.backend.repository.EmpresaUsuarioRepository;
 import com.fatorr.backend.repository.UsuarioRepository;
 import com.fatorr.backend.service.AuthService;
 import com.fatorr.backend.util.CpfUtils;
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,6 +31,7 @@ public class UsuarioController {
 
     private final UsuarioRepository usuarioRepository;
     private final EmpresaRepository empresaRepository;
+    private final EmpresaUsuarioRepository empresaUsuarioRepository;
     private final AuthService authService;
     private final JwtUtils jwtUtils;
 
@@ -47,6 +50,66 @@ public class UsuarioController {
     public static class AlterarStatusVinculoDTO {
         private String status;
         private String aprovadoPor;
+    }
+
+    private Usuario extrairUsuarioDoHeader(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7).trim();
+            if (jwtUtils.validateToken(token)) {
+                String uuidId = jwtUtils.extractUuidId(token);
+                if (uuidId != null) {
+                    Optional<Usuario> opt = authService.buscarUsuarioPorUuid(uuidId);
+                    if (opt.isPresent()) return opt.get();
+                }
+                String cpf = jwtUtils.extractCpf(token);
+                if (cpf != null) {
+                    return usuarioRepository.findByCpf(cpf).orElse(null);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Lista os convites pendentes de empresa criados por contadores para o empresário autenticado.
+     */
+    @GetMapping("/meus-convites")
+    public ResponseEntity<?> listarMeusConvites(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            Usuario usuario = extrairUsuarioDoHeader(authHeader);
+            if (usuario == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Collections.singletonMap("error", "Não autorizado"));
+            }
+            List<AuthService.ConviteEmpresaDTO> convites = authService.listarConvitesEmpresaParaEmpresario(usuario);
+            return ResponseEntity.ok(convites);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "Erro ao listar convites: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Responde ao convite de empresa (aceita ou recusa a empresa e o contador).
+     */
+    @PostMapping("/meus-convites/{id}/responder")
+    public ResponseEntity<?> responderConvite(
+            @PathVariable String id,
+            @RequestBody AuthService.RespostaConviteRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            Usuario usuario = extrairUsuarioDoHeader(authHeader);
+            if (usuario == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Collections.singletonMap("error", "Não autorizado"));
+            }
+            authService.responderConviteEmpresa(id, request.isAceitar(), usuario);
+            String msg = request.isAceitar() ? "Empresa e contador aceitos com sucesso!" : "Convite recusado com sucesso.";
+            return ResponseEntity.ok(Collections.singletonMap("message", msg));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "Erro ao responder convite: " + e.getMessage()));
+        }
     }
 
     /**
@@ -144,6 +207,8 @@ public class UsuarioController {
             }
         } else {
             usuario = new Usuario();
+            usuario.setUuidId(UUID.randomUUID().toString());
+            usuario.setNome("Colaborador (" + CpfUtils.mask(cleanCpf) + ")");
             usuario.setCpf(cleanCpf);
             usuario.setSenha(dto.getSenha());
             usuario.setTipo(TipoUsuario.USUARIO_EMPRESA);
@@ -152,32 +217,78 @@ public class UsuarioController {
         }
 
         usuario.getEmpresas().add(empresa);
-        usuarioRepository.save(usuario);
+        usuario = usuarioRepository.save(usuario);
+
+        // Atualizar ou criar vínculo APROVADO em empresa_usuarios
+        Optional<EmpresaUsuario> vincOpt = empresaUsuarioRepository.findByEmpresaIdAndUsuarioId(empresa.getUuidId(), usuario.getUuidId());
+        if (vincOpt.isPresent()) {
+            EmpresaUsuario vinc = vincOpt.get();
+            vinc.setStatusVinculo(StatusVinculo.APROVADO);
+            vinc.setAprovadoEm(LocalDateTime.now());
+            empresaUsuarioRepository.save(vinc);
+        } else {
+            EmpresaUsuario novoVinc = new EmpresaUsuario(
+                    UUID.randomUUID().toString(),
+                    empresa.getUuidId(),
+                    usuario.getUuidId(),
+                    "Colaborador",
+                    StatusVinculo.APROVADO,
+                    usuario.getUuidId(),
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
+            empresaUsuarioRepository.save(novoVinc);
+        }
 
         return ResponseEntity.ok("Usuário vinculado com sucesso.");
     }
 
     @GetMapping
-    public ResponseEntity<List<UsuarioDTO>> listarTodosUsuarios() {
-        List<Usuario> usuarios = usuarioRepository.findAllWithEmpresas();
-        List<UsuarioDTO> dtos = usuarios.stream().map(u -> {
-            List<EmpresaResumoDTO> empresasDto = u.getEmpresas().stream()
-                    .map(e -> new EmpresaResumoDTO(e.getId(), e.getRazaoSocial(), e.getCnpj()))
-                    .collect(Collectors.toList());
+    public ResponseEntity<List<UsuarioDTO>> listarTodosUsuarios(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-            return UsuarioDTO.builder()
-                    .id(u.getId())
-                    .uuidId(u.getUuidId())
-                    .nome(u.getNome())
-                    .email(u.getEmail())
-                    .cpf(u.getCpf())
-                    .tipoPerfil(u.getTipoPerfil())
-                    .tipo(u.getTipo())
-                    .status(u.getStatus())
-                    .organizacaoContabilId(u.getOrganizacaoContabilId())
-                    .empresas(empresasDto)
-                    .build();
-        }).collect(Collectors.toList());
+        Usuario usuarioLogado = extrairUsuarioDoHeader(authHeader);
+        if (usuarioLogado == null) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+
+        List<Empresa> minhasEmpresas = authService.listarEmpresasPermitidasEntidade(usuarioLogado);
+        Set<Long> empresaIds = minhasEmpresas.stream().map(Empresa::getId).collect(Collectors.toSet());
+        Set<String> empresaUuids = minhasEmpresas.stream()
+                .map(Empresa::getUuidId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<Usuario> todos = usuarioRepository.findAllWithEmpresas();
+        List<UsuarioDTO> dtos = todos.stream()
+                .filter(u -> {
+                    if (u.getId().equals(usuarioLogado.getId())) return true;
+                    if (usuarioLogado.getOrganizacaoContabilId() != null &&
+                            usuarioLogado.getOrganizacaoContabilId().equals(u.getOrganizacaoContabilId())) {
+                        return true;
+                    }
+                    return u.getEmpresas().stream().anyMatch(e -> empresaIds.contains(e.getId()) ||
+                            (e.getUuidId() != null && empresaUuids.contains(e.getUuidId())));
+                })
+                .map(u -> {
+                    List<EmpresaResumoDTO> empresasDto = u.getEmpresas().stream()
+                            .filter(e -> empresaIds.contains(e.getId()) || (e.getUuidId() != null && empresaUuids.contains(e.getUuidId())))
+                            .map(e -> new EmpresaResumoDTO(e.getId(), e.getRazaoSocial(), e.getCnpj()))
+                            .collect(Collectors.toList());
+
+                    return UsuarioDTO.builder()
+                            .id(u.getId())
+                            .uuidId(u.getUuidId())
+                            .nome(u.getNome())
+                            .email(u.getEmail())
+                            .cpf(u.getCpf())
+                            .tipoPerfil(u.getTipoPerfil())
+                            .tipo(u.getTipo())
+                            .status(u.getStatus())
+                            .organizacaoContabilId(u.getOrganizacaoContabilId())
+                            .empresas(empresasDto)
+                            .build();
+                }).collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
     }
@@ -200,6 +311,12 @@ public class UsuarioController {
 
             usuario.getEmpresas().remove(empresa);
             usuarioRepository.save(usuario);
+
+            if (empresa.getUuidId() != null && usuario.getUuidId() != null) {
+                empresaUsuarioRepository.findByEmpresaIdAndUsuarioId(empresa.getUuidId(), usuario.getUuidId())
+                        .ifPresent(empresaUsuarioRepository::delete);
+            }
+
             return ResponseEntity.ok("Usuário desvinculado com sucesso.");
         }
         return ResponseEntity.notFound().build();

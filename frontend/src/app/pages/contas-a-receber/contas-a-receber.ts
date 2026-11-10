@@ -5,7 +5,8 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import {
   ContaReceberService,
-  DadosNotaFiscalDTO
+  DadosNotaFiscalDTO,
+  ItemPreviewXmlLoteDTO
 } from '../../services/conta-receber.service';
 import { EmpresaContextService } from '../../services/empresa-context.service';
 import {
@@ -46,14 +47,31 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
   totalElementos = 0;
   totalPaginas = 0;
 
-  // Modal Importação XML com Preview
+  // Modal Importação XML em Lote
   mostrarModalXml = false;
-  arquivoXml: File | null = null;
+  arquivosXml: File[] = [];
   carregandoPreview = false;
   importandoXml = false;
-  previewDados: DadosNotaFiscalDTO | null = null;
-  atualizarFaturamento = true;
+  itensPreviewLote: ItemPreviewXmlLoteDTO[] = [];
   erroPreview = '';
+
+  get totalArquivos(): number {
+    return this.arquivosXml.length;
+  }
+
+  get totalValidas(): number {
+    return this.itensPreviewLote.filter(i => i.valido).length;
+  }
+
+  get totalErrosOuBloqueios(): number {
+    return this.itensPreviewLote.filter(i => !i.valido).length;
+  }
+
+  get valorTotalValidas(): number {
+    return this.itensPreviewLote
+      .filter(i => i.valido && i.dados?.valorTotal)
+      .reduce((acc, curr) => acc + (curr.dados?.valorTotal || 0), 0);
+  }
 
   ngOnInit(): void {
     this.empresaContext.empresaSelecionada$
@@ -91,7 +109,7 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
         }
       },
       error: () => {
-        // Silencioso ou log de clientes
+        // Silencioso
       }
     });
   }
@@ -101,23 +119,25 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.erro = '';
 
-    this.service.listar(this.empresaId, {
+    const filtros = {
       status: this.status || undefined,
       clienteId: this.clienteId || undefined,
       inicio: this.inicio || undefined,
       fim: this.fim || undefined,
       pagina: this.pagina,
       tamanho: this.tamanho
-    }).subscribe({
-      next: res => {
-        this.contas = res.content || [];
-        this.totalPaginas = res.totalPages || 0;
-        this.totalElementos = res.totalElements || 0;
+    };
+
+    this.service.listar(this.empresaId, filtros).subscribe({
+      next: pag => {
         this.loading = false;
+        this.contas = pag.content || [];
+        this.totalElementos = pag.totalElements || 0;
+        this.totalPaginas = pag.totalPages || 0;
       },
       error: err => {
-        this.erro = err.error?.message || 'Não foi possível carregar as contas a receber.';
         this.loading = false;
+        this.erro = err.error?.message || err.error?.erro || 'Erro ao carregar contas a receber.';
       }
     });
   }
@@ -136,44 +156,54 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
     this.carregarContas();
   }
 
-  // --- Baixa e Cancelamento ---
+  // --- Ações de Contas a Receber ---
   baixarConta(conta: ContaReceberDTO): void {
-    if (!confirm(`Deseja confirmar a baixa do título ${conta.numeroDocumento || conta.id}?`)) {
+    if (!this.empresaId || !conta.id) return;
+    if (!confirm(`Deseja confirmar o recebimento do título ${conta.numeroDocumento || conta.id}?`)) {
       return;
     }
+
     this.service.baixar(this.empresaId, conta.id).subscribe({
       next: () => {
-        this.sucesso = 'Conta baixada com sucesso (PAGO).';
+        this.sucesso = `Título ${conta.numeroDocumento || conta.id} recebido com sucesso.`;
         this.carregarContas();
       },
       error: err => {
-        this.erro = err.error?.message || 'Não foi possível efetuar a baixa.';
+        this.erro = err.error?.message || err.error?.erro || 'Erro ao baixar título.';
       }
     });
   }
 
   cancelarConta(conta: ContaReceberDTO): void {
-    if (!confirm(`Deseja realmente cancelar a cobrança do título ${conta.numeroDocumento || conta.id}? Esta ação não altera o Faturamento Mensal.`)) {
+    if (!this.empresaId || !conta.id) return;
+    if (!confirm(`Deseja cancelar o título ${conta.numeroDocumento || conta.id}?`)) {
       return;
     }
+
     this.service.cancelar(this.empresaId, conta.id).subscribe({
       next: () => {
-        this.sucesso = 'Conta cancelada com sucesso.';
+        this.sucesso = `Título cancelado com sucesso.`;
         this.carregarContas();
       },
       error: err => {
-        this.erro = err.error?.message || 'Não foi possível cancelar a conta.';
+        this.erro = err.error?.message || err.error?.erro || 'Erro ao cancelar título.';
       }
     });
   }
 
   cancelarNotaFiscal(conta: ContaReceberDTO): void {
-    if (!confirm(`Confirma o cancelamento da Nota Fiscal ${conta.numeroDocumento || conta.id}? O status mudará para NF_CANCELADA e o valor será abatido do Faturamento Mensal no cálculo do Fator R.`)) {
+    if (!this.empresaId || !conta.id) return;
+    const msg = conta.xmlChaveAcesso
+      ? `Atenção: Cancelar esta NF cancelará todas as parcelas e abaterá o valor do Faturamento Mensal. Deseja prosseguir?`
+      : `Deseja cancelar esta nota fiscal?`;
+
+    if (!confirm(msg)) {
       return;
     }
+
     this.service.cancelarNf(this.empresaId, conta.id).subscribe({
       next: () => {
-        this.sucesso = 'Nota fiscal cancelada com sucesso! O valor foi abatido do Faturamento Mensal.';
+        this.sucesso = `Nota fiscal cancelada e faturamento estornado com sucesso.`;
         this.carregarContas();
       },
       error: err => {
@@ -182,76 +212,98 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
     });
   }
 
-  // --- Modal Upload e Preview XML ---
+  // --- Modal Upload e Preview XML em Lote ---
   abrirModalXml(): void {
     this.mostrarModalXml = true;
-    this.arquivoXml = null;
-    this.previewDados = null;
-    this.erroPreview = '';
-    this.atualizarFaturamento = true;
-  }
-
-  fecharModalXml(): void {
-    this.mostrarModalXml = false;
-    this.arquivoXml = null;
-    this.previewDados = null;
+    this.arquivosXml = [];
+    this.itensPreviewLote = [];
     this.erroPreview = '';
     this.carregandoPreview = false;
     this.importandoXml = false;
   }
 
-  selecionarArquivoXml(event: Event): void {
+  fecharModalXml(): void {
+    this.mostrarModalXml = false;
+    this.arquivosXml = [];
+    this.itensPreviewLote = [];
+    this.erroPreview = '';
+    this.carregandoPreview = false;
+    this.importandoXml = false;
+  }
+
+  selecionarArquivosXml(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.arquivoXml = input.files[0];
-      this.obterPreview();
+      this.arquivosXml = Array.from(input.files);
+      this.obterPreviewLote();
     }
   }
 
-  obterPreview(): void {
-    if (!this.arquivoXml || !this.empresaId) return;
+  removerArquivo(index: number): void {
+    if (index >= 0 && index < this.arquivosXml.length) {
+      this.arquivosXml.splice(index, 1);
+      this.itensPreviewLote.splice(index, 1);
+      if (this.arquivosXml.length === 0) {
+        this.itensPreviewLote = [];
+        this.erroPreview = '';
+      }
+    }
+  }
+
+  obterPreviewLote(): void {
+    if (this.arquivosXml.length === 0 || !this.empresaId) return;
 
     this.carregandoPreview = true;
     this.erroPreview = '';
-    this.previewDados = null;
+    this.itensPreviewLote = [];
 
-    this.service.previewXml(this.empresaId, this.arquivoXml).subscribe({
-      next: dados => {
-        this.previewDados = dados;
+    this.service.previewXmlLote(this.empresaId, this.arquivosXml).subscribe({
+      next: itens => {
+        this.itensPreviewLote = itens;
         this.carregandoPreview = false;
-        if (dados.periodoEncerrado) {
-          this.erroPreview = dados.mensagemAlertaPeriodo || 'Atenção: A data de emissão desta nota pertence a um período já encerrado.';
-        }
       },
       error: err => {
         this.carregandoPreview = false;
-        this.erroPreview = err.error?.message || 'Erro ao processar pré-visualização do XML.';
+        this.erroPreview = err.error?.message || 'Erro ao processar pré-visualização dos arquivos XML.';
       }
     });
   }
 
   confirmarImportacaoXml(): void {
-    if (!this.arquivoXml || !this.empresaId) return;
-    if (this.previewDados?.periodoEncerrado) {
-      this.erroPreview = 'Não é possível importar a nota fiscal em um período já encerrado. Abra o período no Simulador do Fator R.';
+    if (this.arquivosXml.length === 0 || !this.empresaId) return;
+
+    // Filtra apenas os arquivos válidos
+    const nomesValidos = new Set(
+      this.itensPreviewLote
+        .filter(item => item.valido)
+        .map(item => item.nomeArquivo)
+    );
+
+    const arquivosAImportar = this.arquivosXml.filter(arq => nomesValidos.has(arq.name));
+
+    if (arquivosAImportar.length === 0) {
+      this.erroPreview = 'Nenhuma nota fiscal válida para importar no lote.';
       return;
     }
 
     this.importandoXml = true;
     this.erroPreview = '';
 
-    this.service.importarXml(this.empresaId, this.arquivoXml, this.atualizarFaturamento).subscribe({
-      next: titulos => {
+    this.service.importarXmlLote(this.empresaId, arquivosAImportar).subscribe({
+      next: res => {
         this.importandoXml = false;
-        const total = titulos.length;
-        this.sucesso = `Nota fiscal importada com sucesso: ${total} título(s) gerado(s).`;
+        const msgSucesso = `Importação em lote concluída: ${res.totalImportados} nota(s) importada(s) com sucesso. ${res.titulosGerados.length} título(s) gerado(s) e Faturamento Mensal atualizado!`;
+        this.sucesso = msgSucesso;
+        if (res.mensagensErro && res.mensagensErro.length > 0) {
+          this.erro = `Algumas notas tiveram restrições: ${res.mensagensErro.join('; ')}`;
+        }
         this.fecharModalXml();
         this.carregarClientes();
         this.carregarContas();
       },
       error: err => {
         this.importandoXml = false;
-        this.erroPreview = err.error?.message || err.error?.erro || 'Erro ao importar XML da nota fiscal.';
+        this.erroPreview = err.error?.message || err.error?.erro || 'Erro ao importar lote de notas fiscais.';
       }
     });
   }

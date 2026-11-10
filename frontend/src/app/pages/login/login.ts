@@ -1,8 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, ContadorResumo } from '../../services/auth.service';
 import { unmaskCpf, maskCpf } from '../../shared/utils/formatters';
 import { maskCnpj, unmaskCnpj } from '../../shared/utils/cnpj';
 
@@ -13,7 +13,7 @@ import { maskCnpj, unmaskCnpj } from '../../shared/utils/cnpj';
   templateUrl: './login.html',
   styleUrls: ['./login.css']
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   abaAtiva: 'login' | 'cadastro' | 'recuperar' = 'login';
   perfilCadastro: 'CONTADOR' | 'EMPRESARIO' | 'COLABORADOR' = 'CONTADOR';
 
@@ -40,8 +40,11 @@ export class LoginComponent {
     senha: '',
     razaoSocial: '',
     nomeFantasia: '',
-    cnpj: ''
+    cnpj: '',
+    contadorIdentificador: ''
   };
+  contadorManual = '';
+  contadores: ContadorResumo[] = [];
 
   // Cadastro Colaborador
   colaborador = {
@@ -67,10 +70,35 @@ export class LoginComponent {
 
   constructor(private authService: AuthService, private router: Router) {}
 
+  ngOnInit() {
+    this.carregarContadores();
+  }
+
+  carregarContadores() {
+    this.authService.listarContadores().subscribe({
+      next: (dados) => {
+        this.contadores = dados;
+        if (dados.length > 0 && !this.empresario.contadorIdentificador) {
+          this.empresario.contadorIdentificador = dados[0].id;
+        }
+      },
+      error: () => {}
+    });
+  }
+
   trocarAba(aba: 'login' | 'cadastro' | 'recuperar') {
     this.abaAtiva = aba;
     this.erro = '';
     this.sucesso = '';
+    if (aba === 'cadastro') {
+      this.carregarContadores();
+    }
+  }
+
+  onContadorManualChange() {
+    if (this.contadorManual) {
+      this.empresario.contadorIdentificador = this.contadorManual.trim();
+    }
   }
 
   aplicarMascaraCPF(event: any, targetObj?: any, propName?: string) {
@@ -150,6 +178,15 @@ export class LoginComponent {
       return;
     }
 
+    const contadorFinal = (this.empresario.contadorIdentificador === 'OUTRO')
+        ? this.contadorManual.trim()
+        : (this.empresario.contadorIdentificador || this.contadorManual).trim();
+
+    if (!contadorFinal) {
+      this.erro = 'Por favor, selecione ou informe o Contador / Organização Contábil responsável.';
+      return;
+    }
+
     this.carregando = true;
     this.erro = '';
     this.sucesso = '';
@@ -161,7 +198,8 @@ export class LoginComponent {
       senha: this.empresario.senha,
       razaoSocial: this.empresario.razaoSocial,
       nomeFantasia: this.empresario.nomeFantasia,
-      cnpj: unmaskCnpj(this.empresario.cnpj)
+      cnpj: unmaskCnpj(this.empresario.cnpj),
+      contadorIdentificador: contadorFinal
     }).subscribe({
       next: () => {
         this.sucesso = 'Empresário e Empresa cadastrados com sucesso! Redirecionando...';

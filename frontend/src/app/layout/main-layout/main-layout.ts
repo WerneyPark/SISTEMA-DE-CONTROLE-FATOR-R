@@ -4,6 +4,7 @@ import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { EmpresaContextService } from '../../services/empresa-context.service';
 import { EmpresaService } from '../../services/empresa.service';
 import { AuthService } from '../../services/auth.service';
+import { UsuarioService, ConviteEmpresa } from '../../services/usuario.service';
 import { FormsModule } from '@angular/forms';
 import { filter, Subscription } from 'rxjs';
 import { Empresa } from '../../models/models';
@@ -26,9 +27,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   empresaSelecionada: Empresa | null = null;
   empresaSelecionadaId: number | null = null;
   isAdmin = false;
+  isEmpresario = false;
   usuarioAtual = '';
   usuarioNome = '';
   usuarioPerfil = '';
+
+  convitesPendentes: ConviteEmpresa[] = [];
+  processandoConviteId: string | null = null;
 
   sidebarCollapsed = false;
   mobileMenuOpen = false;
@@ -59,6 +64,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     private empresaContext: EmpresaContextService,
     private empresaService: EmpresaService,
     private authService: AuthService,
+    private usuarioService: UsuarioService,
     private router: Router
   ) {}
 
@@ -67,6 +73,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.usuarioAtual = user?.cpf || '';
     this.usuarioNome = user?.nome || (user?.cpf ? `CPF: ${user.cpf}` : 'Usuário');
     this.isAdmin = this.authService.isAdmin();
+    this.isEmpresario = this.authService.isEmpresario();
     
     if (this.authService.isAdmin()) {
       this.usuarioPerfil = 'Contador Responsável';
@@ -77,6 +84,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
 
     this.carregarEmpresas();
+    this.carregarConvitesPendentes();
 
     this.empresaSub = this.empresaContext.empresaSelecionada$.subscribe(emp => {
       this.empresaSelecionada = emp;
@@ -90,6 +98,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       .subscribe((event: any) => {
         this.updateRouteInfo(event.urlAfterRedirects || event.url);
         this.mobileMenuOpen = false;
+        this.carregarConvitesPendentes();
       });
   }
 
@@ -117,6 +126,40 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         this.empresaContext.setEmpresas(dados);
       }
     });
+  }
+
+  carregarConvitesPendentes() {
+    if (this.isEmpresario) {
+      this.usuarioService.listarMeusConvites().subscribe({
+        next: (convites) => this.convitesPendentes = convites,
+        error: () => this.convitesPendentes = []
+      });
+    }
+  }
+
+  aceitarConvite(c: ConviteEmpresa) {
+    this.processandoConviteId = c.vinculoId;
+    this.usuarioService.responderConvite(c.vinculoId, true).subscribe({
+      next: () => {
+        this.processandoConviteId = null;
+        this.carregarConvitesPendentes();
+        this.carregarEmpresas();
+      },
+      error: () => this.processandoConviteId = null
+    });
+  }
+
+  recusarConvite(c: ConviteEmpresa) {
+    if (confirm(`Deseja realmente recusar a vinculação com a empresa ${c.razaoSocial} e o contador ${c.nomeContador}?`)) {
+      this.processandoConviteId = c.vinculoId;
+      this.usuarioService.responderConvite(c.vinculoId, false).subscribe({
+        next: () => {
+          this.processandoConviteId = null;
+          this.carregarConvitesPendentes();
+        },
+        error: () => this.processandoConviteId = null
+      });
+    }
   }
 
   onEmpresaChange() {

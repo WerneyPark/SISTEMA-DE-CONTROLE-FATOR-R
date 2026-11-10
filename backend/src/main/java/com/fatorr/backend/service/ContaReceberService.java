@@ -16,18 +16,41 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ContaReceberService {
+
+    public record ArquivoXmlInput(String nomeArquivo, byte[] conteudo) {}
+
+    public record ItemPreviewXmlLote(
+            String nomeArquivo,
+            boolean valido,
+            boolean periodoEncerrado,
+            boolean jaImportada,
+            String mensagemErro,
+            LeitorXmlNfeService.DadosNotaFiscal dados
+    ) {}
+
+    public record ResultadoImportacaoXmlLote(
+            int totalArquivos,
+            int totalImportados,
+            int totalIgnoradosOuErros,
+            BigDecimal valorTotalImportado,
+            List<ContaReceber> titulosGerados,
+            List<String> mensagensErro
+    ) {}
 
     private final ContaReceberRepository repository;
     private final ClienteFornecedorRepository clienteRepository;
@@ -73,6 +96,82 @@ public class ContaReceberService {
                 encerrado,
                 aviso
         );
+    }
+
+    public List<ItemPreviewXmlLote> previewXmlLote(
+            String empresaId,
+            List<ArquivoXmlInput> arquivos,
+            LeitorXmlNfeService leitorXmlNfeService) {
+        Empresa empresa = tenantResolverService.resolveEmpresa(empresaId);
+        List<String> empresaIds = resolverEmpresaIds(empresaId);
+        List<ItemPreviewXmlLote> resultado = new ArrayList<>();
+        Set<String> chavesVistasNoLote = new HashSet<>();
+
+        if (arquivos == null || arquivos.isEmpty()) {
+            return resultado;
+        }
+
+        for (ArquivoXmlInput arq : arquivos) {
+            String nomeArquivo = arq.nomeArquivo() != null ? arq.nomeArquivo() : "nota.xml";
+            if (arq.conteudo() == null || arq.conteudo().length == 0) {
+                resultado.add(new ItemPreviewXmlLote(nomeArquivo, false, false, false, "Arquivo XML vazio", null));
+                continue;
+            }
+
+            try {
+                LeitorXmlNfeService.DadosNotaFiscal nota = leitorXmlNfeService.lerXmlNfe(new ByteArrayInputStream(arq.conteudo()));
+
+                String cnpjEmpresa = CnpjUtils.unmask(empresa.getCnpj());
+                String cnpjEmitente = CnpjUtils.unmask(nota.cnpjEmitente());
+                if (!CnpjUtils.isValid(cnpjEmpresa) || !CnpjUtils.isValid(cnpjEmitente) || !cnpjEmpresa.equals(cnpjEmitente)) {
+                    resultado.add(new ItemPreviewXmlLote(nomeArquivo, false, false, false,
+                            "O emitente do XML (" + (nota.cnpjEmitente() != null ? nota.cnpjEmitente() : "não inf.") + ") não pertence à empresa ativa (" + empresa.getCnpj() + ")",
+                            nota));
+                    continue;
+                }
+
+                boolean periodoEncerrado = false;
+                if (nota.dataEmissao() != null) {
+                    YearMonth competencia = YearMonth.from(nota.dataEmissao());
+                    periodoEncerrado = encerramentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia)
+                            .map(EncerramentoCompetencia::isEncerrado).orElse(false);
+                }
+
+                if (periodoEncerrado) {
+                    resultado.add(new ItemPreviewXmlLote(nomeArquivo, false, true, false,
+                            "A data de emissão pertence a um período encerrado (" + YearMonth.from(nota.dataEmissao()) + ")",
+                            nota));
+                    continue;
+                }
+
+                boolean jaImportada = false;
+                if (nota.chaveAcesso() != null && !nota.chaveAcesso().isBlank()) {
+                    if (chavesVistasNoLote.contains(nota.chaveAcesso())) {
+                        jaImportada = true;
+                    } else if (repository.findByEmpresaIdInAndXmlChaveAcesso(empresaIds, nota.chaveAcesso()).isPresent()) {
+                        jaImportada = true;
+                    }
+                }
+
+                if (jaImportada) {
+                    resultado.add(new ItemPreviewXmlLote(nomeArquivo, false, false, true,
+                            "A nota fiscal já foi importada ou está duplicada no lote",
+                            nota));
+                    continue;
+                }
+
+                if (nota.chaveAcesso() != null && !nota.chaveAcesso().isBlank()) {
+                    chavesVistasNoLote.add(nota.chaveAcesso());
+                }
+
+                resultado.add(new ItemPreviewXmlLote(nomeArquivo, true, false, false, null, nota));
+            } catch (Exception e) {
+                resultado.add(new ItemPreviewXmlLote(nomeArquivo, false, false, false,
+                        e.getMessage() != null ? e.getMessage() : "Erro ao processar XML", null));
+            }
+        }
+
+        return resultado;
     }
 
     @Transactional
@@ -163,7 +262,8 @@ public class ContaReceberService {
             titulos.add(repository.save(conta));
         }
 
-        if (atualizarFaturamento && faturamentoRepository != null && nota.dataEmissao() != null) {
+        // Toda nota fiscal importada alimenta obrigatoriamente o Faturamento Mensal da competência
+        if (faturamentoRepository != null && nota.dataEmissao() != null) {
             YearMonth competencia = YearMonth.from(nota.dataEmissao());
             List<FaturamentoMensal> existentes = faturamentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia);
             if (!existentes.isEmpty()) {
@@ -187,7 +287,53 @@ public class ContaReceberService {
             String empresaId,
             InputStream arquivoXml,
             LeitorXmlNfeService leitorXmlNfeService) {
-        return importarXml(empresaId, arquivoXml, leitorXmlNfeService, false);
+        return importarXml(empresaId, arquivoXml, leitorXmlNfeService, true);
+    }
+
+    @Transactional
+    public ResultadoImportacaoXmlLote importarXmlLote(
+            String empresaId,
+            List<ArquivoXmlInput> arquivos,
+            LeitorXmlNfeService leitorXmlNfeService) {
+        int totalArquivos = (arquivos != null) ? arquivos.size() : 0;
+        int totalImportados = 0;
+        int totalIgnoradosOuErros = 0;
+        BigDecimal valorTotalImportado = BigDecimal.ZERO;
+        List<ContaReceber> titulosGerados = new ArrayList<>();
+        List<String> mensagensErro = new ArrayList<>();
+
+        if (arquivos != null) {
+            for (ArquivoXmlInput arq : arquivos) {
+                String nome = arq.nomeArquivo() != null ? arq.nomeArquivo() : "nota.xml";
+                try {
+                    List<ContaReceber> titulos = importarXml(
+                            empresaId,
+                            new ByteArrayInputStream(arq.conteudo()),
+                            leitorXmlNfeService,
+                            true
+                    );
+                    totalImportados++;
+                    titulosGerados.addAll(titulos);
+                    for (ContaReceber cr : titulos) {
+                        if (cr.getValorTotal() != null) {
+                            valorTotalImportado = valorTotalImportado.add(cr.getValorTotal());
+                        }
+                    }
+                } catch (Exception e) {
+                    totalIgnoradosOuErros++;
+                    mensagensErro.add(nome + ": " + (e.getMessage() != null ? e.getMessage() : "Erro ao importar"));
+                }
+            }
+        }
+
+        return new ResultadoImportacaoXmlLote(
+                totalArquivos,
+                totalImportados,
+                totalIgnoradosOuErros,
+                valorTotalImportado,
+                titulosGerados,
+                mensagensErro
+        );
     }
 
     public ContaReceber buscarPorId(String empresaId, String id) {
@@ -219,12 +365,12 @@ public class ContaReceberService {
             return repository.findByEmpresaIdInAndStatusAndDataVencimentoBetween(
                     empresaIds, status, inicio, fim, pageable);
         }
-        if (temStatus) {
-            return repository.findByEmpresaIdInAndStatus(empresaIds, status, pageable);
-        }
         if (temCliente && temPeriodo) {
             return repository.findByEmpresaIdInAndClienteIdAndDataVencimentoBetween(
                     empresaIds, clienteId, inicio, fim, pageable);
+        }
+        if (temStatus) {
+            return repository.findByEmpresaIdInAndStatus(empresaIds, status, pageable);
         }
         if (temCliente) {
             return repository.findByEmpresaIdInAndClienteId(empresaIds, clienteId, pageable);
@@ -233,33 +379,40 @@ public class ContaReceberService {
             return repository.findByEmpresaIdInAndDataVencimentoBetween(
                     empresaIds, inicio, fim, pageable);
         }
+
         return repository.findByEmpresaIdIn(empresaIds, pageable);
     }
 
     public ContaReceber atualizar(String empresaId, String id, ContaReceber dados) {
-        ContaReceber conta = buscarPorId(empresaId, id);
-        if (!"PENDENTE".equals(conta.getStatus())) {
-            throw new IllegalStateException("Somente contas pendentes podem ser alteradas");
+        ContaReceber existente = buscarPorId(empresaId, id);
+
+        if ("CANCELADO".equals(existente.getStatus())) {
+            throw new IllegalStateException("Não é possível alterar uma conta cancelada");
+        }
+        if ("PAGO".equals(existente.getStatus())) {
+            throw new IllegalStateException("Não é possível alterar uma conta já paga");
         }
 
-        dados.setEmpresaId(conta.getEmpresaId());
-        dados.setId(conta.getId());
         validarConta(dados);
 
-        conta.setClienteId(dados.getClienteId());
-        conta.setNumeroDocumento(dados.getNumeroDocumento());
-        conta.setValorTotal(dados.getValorTotal());
-        conta.setDataEmissao(dados.getDataEmissao());
-        conta.setDataVencimento(dados.getDataVencimento());
-        conta.setUpdatedAt(LocalDateTime.now());
-        return repository.save(conta);
+        existente.setClienteId(dados.getClienteId());
+        existente.setNumeroDocumento(dados.getNumeroDocumento());
+        existente.setValorTotal(dados.getValorTotal());
+        existente.setDataEmissao(dados.getDataEmissao());
+        existente.setDataVencimento(dados.getDataVencimento());
+        existente.setObservacao(dados.getObservacao());
+        existente.setUpdatedAt(LocalDateTime.now());
+
+        return repository.save(existente);
     }
 
     public void cancelar(String empresaId, String id) {
         ContaReceber conta = buscarPorId(empresaId, id);
+
         if ("PAGO".equals(conta.getStatus())) {
-            throw new IllegalStateException("Uma conta paga não pode ser cancelada");
+            throw new IllegalStateException("Não é possível cancelar uma conta já recebida");
         }
+
         conta.setStatus("CANCELADO");
         conta.setUpdatedAt(LocalDateTime.now());
         repository.save(conta);
@@ -268,45 +421,54 @@ public class ContaReceberService {
     @Transactional
     public ContaReceber cancelarNf(String empresaId, String id) {
         ContaReceber conta = buscarPorId(empresaId, id);
-        if ("PAGO".equals(conta.getStatus())) {
-            throw new IllegalStateException("Não é possível cancelar uma nota fiscal que já possui pagamento registrado.");
-        }
-        if ("NF_CANCELADA".equals(conta.getStatus())) {
-            throw new IllegalStateException("Esta nota fiscal já está cancelada.");
-        }
-
         Empresa empresa = tenantResolverService.resolveEmpresa(empresaId);
-        if (conta.getDataEmissao() != null) {
-            YearMonth competencia = YearMonth.from(conta.getDataEmissao());
-            boolean encerrado = encerramentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia)
-                    .map(EncerramentoCompetencia::isEncerrado).orElse(false);
-            if (encerrado) {
-                throw new IllegalStateException("Não é possível cancelar uma nota fiscal de um período já encerrado (" + competencia + "). Reabra o período no Simulador do Fator R primeiro.");
-            }
 
-            // Abate do faturamento mensal da competência de emissão
+        if ("CANCELADO".equals(conta.getStatus())) {
+            throw new IllegalStateException("Esta nota fiscal já está cancelada");
+        }
+        if ("PAGO".equals(conta.getStatus())) {
+            throw new IllegalStateException("Não é possível cancelar uma nota fiscal que já possui parcelas recebidas");
+        }
+
+        // Subtrai o valor do FaturamentoMensal se existir
+        if (faturamentoRepository != null && conta.getDataEmissao() != null) {
+            YearMonth competencia = YearMonth.from(conta.getDataEmissao());
             List<FaturamentoMensal> existentes = faturamentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia);
             if (!existentes.isEmpty()) {
                 FaturamentoMensal fat = existentes.get(0);
                 BigDecimal novoValor = fat.getValor().subtract(conta.getValorTotal());
-                if (novoValor.compareTo(BigDecimal.ZERO) < 0) {
-                    novoValor = BigDecimal.ZERO;
-                }
-                fat.setValor(novoValor);
+                fat.setValor(novoValor.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : novoValor);
                 faturamentoRepository.save(fat);
             }
         }
 
-        conta.setStatus("NF_CANCELADA");
-        conta.setUpdatedAt(LocalDateTime.now());
-        return repository.save(conta);
+        // Cancela todas as parcelas originadas da mesma NF (mesma chave de acesso)
+        if (conta.getXmlChaveAcesso() != null && !conta.getXmlChaveAcesso().isBlank()) {
+            List<String> empresaIds = resolverEmpresaIds(empresaId);
+            List<ContaReceber> todasDaNf = repository.findByEmpresaIdIn(empresaIds, Pageable.unpaged()).getContent()
+                    .stream()
+                    .filter(c -> conta.getXmlChaveAcesso().equals(c.getXmlChaveAcesso()))
+                    .toList();
+
+            for (ContaReceber c : todasDaNf) {
+                c.setStatus("CANCELADO");
+                c.setUpdatedAt(LocalDateTime.now());
+                repository.save(c);
+            }
+        } else {
+            conta.setStatus("CANCELADO");
+            conta.setUpdatedAt(LocalDateTime.now());
+            repository.save(conta);
+        }
+
+        return conta;
     }
 
     public ContaReceber baixar(String empresaId, String id) {
         ContaReceber conta = buscarPorId(empresaId, id);
 
         if ("PAGO".equals(conta.getStatus())) {
-            throw new IllegalStateException("A conta já está paga");
+            throw new IllegalStateException("Conta já está paga");
         }
 
         if ("CANCELADO".equals(conta.getStatus())) {

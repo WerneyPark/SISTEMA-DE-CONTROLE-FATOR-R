@@ -292,32 +292,35 @@
     </div>
   </div>
 
-  <!-- MODAL: UPLOAD E PREVIEW XML NF-e NO SIMULADOR -->
+  <!-- MODAL: UPLOAD E PREVIEW XML NF-e EM LOTE NO SIMULADOR -->
   <div class="modal-overlay" *ngIf="mostrarModalXml" (click)="fecharModalXml()">
     <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>Importar Nota Fiscal XML (NF-e / NFS-e)</h3>
+        <h3>Importar Notas Fiscais XML em Lote (NF-e / NFS-e)</h3>
         <button class="modal-close" (click)="fecharModalXml()">&times;</button>
       </div>
 
       <div class="modal-body">
         <p class="modal-desc">
-          Faça o upload do XML da nota fiscal emitida. O sistema cadastrará as parcelas em Contas a Receber e atualizará automaticamente o Faturamento Mensal no cálculo do Fator R.
+          Selecione <strong>um ou vários arquivos XML</strong> (NF-e ou NFS-e). O sistema cadastrará as parcelas em Contas a Receber e <strong>atualizará automaticamente o Faturamento Mensal</strong> de cada competência para o cálculo do Fator R.
         </p>
 
-        <!-- Seletor de Arquivo -->
+        <!-- Seletor de Arquivos Múltiplos -->
         <div class="upload-area">
           <input
             type="file"
             id="xmlFileInputSimulador"
             accept=".xml,text/xml"
-            (change)="selecionarArquivoXml($event)"
+            multiple
+            (change)="selecionarArquivosXml($event)"
             hidden
           />
           <label for="xmlFileInputSimulador" class="upload-label">
             <span class="upload-icon">📂</span>
-            <span *ngIf="!arquivoXml">Clique para selecionar o arquivo XML da NF-e</span>
-            <span *ngIf="arquivoXml" class="upload-selected">Arquivo: <strong>{{ arquivoXml.name }}</strong></span>
+            <span *ngIf="totalArquivosXml === 0">Clique para selecionar um ou vários arquivos XML da NF-e / NFS-e</span>
+            <span *ngIf="totalArquivosXml > 0" class="upload-selected">
+              <strong>{{ totalArquivosXml }} arquivo(s) selecionado(s)</strong> — Clique para alterar a seleção
+            </span>
           </label>
         </div>
 
@@ -328,81 +331,78 @@
 
         <!-- Indicador de Carregamento do Preview -->
         <div *ngIf="carregandoPreview" class="loading-state">
-          <p>Analisando XML da nota fiscal...</p>
+          <p>Analisando arquivos XML selecionados...</p>
         </div>
 
-        <!-- Painel de Pré-visualização -->
-        <div *ngIf="previewDados && !carregandoPreview" class="preview-panel">
-          <div class="preview-header">
-            <h4>Pré-visualização dos Dados Fiscais</h4>
-            <span class="tag-status-preview" [class.tag-encerrado]="previewDados.periodoEncerrado">
-              {{ previewDados.periodoEncerrado ? 'Período Encerrado' : 'XML Válido' }}
-            </span>
-          </div>
-
-          <!-- Alerta de Período Encerrado -->
-          <div *ngIf="previewDados.periodoEncerrado" class="alert alert-warning" style="margin-bottom: 12px;">
-            <strong>Aviso de Período Encerrado:</strong> A data de emissão desta nota pertence a um período já encerrado. Abra o período no Simulador do Fator R para que o valor seja inserido corretamente.
-          </div>
-
-          <div class="preview-grid">
-            <div class="preview-item">
-              <span class="label">Emitente:</span>
-              <span class="val"><strong>{{ previewDados.nomeEmitente || 'Razão Social não inf.' }}</strong> (CNPJ: {{ previewDados.cnpjEmitente }})</span>
+        <!-- Resumo e Tabela do Lote -->
+        <div *ngIf="itensPreviewLote.length > 0 && !carregandoPreview" class="lote-resumo-container">
+          <!-- KPIs do Lote -->
+          <div class="lote-resumo-grid">
+            <div class="kpi-mini">
+              <span class="kpi-lbl">Total Arquivos</span>
+              <span class="kpi-num">{{ totalArquivosXml }}</span>
             </div>
-            <div class="preview-item">
-              <span class="label">Tomador / Cliente:</span>
-              <span class="val"><strong>{{ previewDados.nomeTomador || 'Nome não informado' }}</strong> (CNPJ/CPF: {{ previewDados.cnpjTomador }})</span>
+            <div class="kpi-mini kpi-valido">
+              <span class="kpi-lbl">Válidas para Importar</span>
+              <span class="kpi-num">{{ totalValidasXml }}</span>
             </div>
-            <div class="preview-item">
-              <span class="label">Número da Nota:</span>
-              <span class="val">{{ previewDados.numeroDocumento || 'Sem número' }}</span>
+            <div class="kpi-mini kpi-erro" *ngIf="totalErrosOuBloqueiosXml > 0">
+              <span class="kpi-lbl">Com Restrições</span>
+              <span class="kpi-num">{{ totalErrosOuBloqueiosXml }}</span>
             </div>
-            <div class="preview-item">
-              <span class="label">Valor Total:</span>
-              <span class="val font-bold valor-destaque">{{ formatCurrency(previewDados.valorTotal) }}</span>
-            </div>
-            <div class="preview-item">
-              <span class="label">Data de Emissão:</span>
-              <span class="val">{{ previewDados.dataEmissao | date:'dd/MM/yyyy' }}</span>
-            </div>
-            <div class="preview-item">
-              <span class="label">Data de Vencimento:</span>
-              <span class="val">{{ previewDados.dataVencimento | date:'dd/MM/yyyy' }}</span>
-            </div>
-            <div class="preview-item full-width" *ngIf="previewDados.chaveAcesso">
-              <span class="label">Chave de Acesso:</span>
-              <span class="val font-mono">{{ previewDados.chaveAcesso }}</span>
+            <div class="kpi-mini kpi-total">
+              <span class="kpi-lbl">Valor Total Válido</span>
+              <span class="kpi-num font-bold">{{ formatCurrency(valorTotalValidasXml) }}</span>
             </div>
           </div>
 
-          <!-- Parcelas da Nota -->
-          <div *ngIf="previewDados.parcelas && previewDados.parcelas.length > 0" class="parcelas-preview">
-            <h5>Parcelas a Gerar em Contas a Receber ({{ previewDados.parcelas.length }})</h5>
-            <table class="sub-table">
+          <!-- Tabela de Arquivos do Lote -->
+          <div class="table-responsive lote-table-wrap">
+            <table class="sub-table lote-table">
               <thead>
                 <tr>
-                  <th>Parcela</th>
-                  <th>Vencimento</th>
+                  <th>Arquivo</th>
+                  <th>Nº Nota</th>
+                  <th>Tomador / Cliente</th>
+                  <th>Emissão</th>
                   <th>Valor</th>
+                  <th>Status</th>
+                  <th>Remover</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let p of previewDados.parcelas">
-                  <td>{{ p.numero }}</td>
-                  <td>{{ p.dataVencimento | date:'dd/MM/yyyy' }}</td>
-                  <td>{{ formatCurrency(p.valor) }}</td>
+                <tr *ngFor="let item of itensPreviewLote; let i = index" [class.tr-bloqueado]="!item.valido">
+                  <td class="font-mono text-xs">{{ item.nomeArquivo }}</td>
+                  <td>{{ item.dados?.numeroDocumento || '-' }}</td>
+                  <td>
+                    <div class="text-truncate" style="max-width: 180px;" [title]="item.dados?.nomeTomador || item.dados?.cnpjTomador">
+                      <strong>{{ item.dados?.nomeTomador || '-' }}</strong>
+                      <div class="text-xs text-muted" *ngIf="item.dados?.cnpjTomador">{{ item.dados?.cnpjTomador }}</div>
+                    </div>
+                  </td>
+                  <td>{{ item.dados?.dataEmissao ? (item.dados?.dataEmissao | date:'dd/MM/yyyy') : '-' }}</td>
+                  <td class="font-semibold">{{ formatCurrency(item.dados?.valorTotal) }}</td>
+                  <td>
+                    <span *ngIf="item.valido" class="tag-status-preview">Válido</span>
+                    <span *ngIf="item.periodoEncerrado" class="tag-status-preview tag-encerrado" [title]="item.mensagemErro || ''">Período Encerrado</span>
+                    <span *ngIf="item.jaImportada" class="tag-status-preview tag-duplicado" [title]="item.mensagemErro || ''">Já Importada</span>
+                    <span *ngIf="!item.valido && !item.periodoEncerrado && !item.jaImportada" class="tag-status-preview tag-erro" [title]="item.mensagemErro || ''">Inválido</span>
+                    <div class="text-xs text-danger mt-1" *ngIf="!item.valido && item.mensagemErro">
+                      {{ item.mensagemErro }}
+                    </div>
+                  </td>
+                  <td>
+                    <button type="button" class="btn-remover-item" title="Remover este arquivo da importação" (click)="removerArquivoXml(i)">✕</button>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <!-- Checkbox de integração com FaturamentoMensal -->
-          <div class="checkbox-group">
-            <label>
-              <input type="checkbox" [(ngModel)]="atualizarFaturamento" />
-              Alimentar automaticamente o Faturamento Mensal desta competência ({{ previewDados.dataEmissao | date:'MM/yyyy' }})
-            </label>
+          <!-- Informação fixa sobre Faturamento Mensal -->
+          <div class="info-faturamento-obrigatorio">
+            <span class="info-icon">ℹ️</span>
+            <span>Todas as notas fiscais importadas serão automaticamente somadas ao <strong>Faturamento Mensal</strong> da competência de emissão e refletidas no Fator R.</span>
           </div>
         </div>
       </div>
@@ -413,9 +413,9 @@
         </button>
         <button
           class="btn btn-primary"
-          [disabled]="!previewDados || previewDados.periodoEncerrado || importandoXml"
+          [disabled]="totalValidasXml === 0 || importandoXml"
           (click)="confirmarImportacaoXml()">
-          {{ importandoXml ? 'Importando...' : 'Confirmar Importação' }}
+          {{ importandoXml ? 'Importando Lote...' : 'Confirmar Importação (' + totalValidasXml + ' notas)' }}
         </button>
       </div>
     </div>
