@@ -195,4 +195,84 @@ public class ContaReceberServiceTest {
 
         verify(faturamentoRepository, times(2)).save(any(FaturamentoMensal.class));
     }
+
+    @Test
+    void naoDevePermitirCancelarNfQuandoPeriodoEstiverEncerrado() {
+        ContaReceber conta = new ContaReceber();
+        conta.setId("conta-1");
+        conta.setEmpresaId("uuid-empresa-1");
+        conta.setDataEmissao(LocalDate.of(2026, 4, 15));
+        conta.setValorTotal(new BigDecimal("1000.00"));
+        conta.setStatus("PENDENTE");
+
+        EncerramentoCompetencia encerramento = new EncerramentoCompetencia();
+        encerramento.setEncerrado(true);
+
+        when(repository.findById("conta-1")).thenReturn(Optional.of(conta));
+        when(encerramentoRepository.findByEmpresaIdAndCompetencia(1L, YearMonth.of(2026, 4)))
+                .thenReturn(Optional.of(encerramento));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                service.cancelarNf("uuid-empresa-1", "conta-1")
+        );
+
+        assertTrue(ex.getMessage().contains("período está encerrado"));
+        verify(faturamentoRepository, never()).save(any());
+    }
+
+    @Test
+    void naoDevePermitirCancelarTituloQuandoPeriodoEstiverEncerrado() {
+        ContaReceber conta = new ContaReceber();
+        conta.setId("conta-2");
+        conta.setEmpresaId("uuid-empresa-1");
+        conta.setDataEmissao(LocalDate.of(2026, 3, 10));
+        conta.setValorTotal(new BigDecimal("500.00"));
+        conta.setStatus("PENDENTE");
+
+        EncerramentoCompetencia encerramento = new EncerramentoCompetencia();
+        encerramento.setEncerrado(true);
+
+        when(repository.findById("conta-2")).thenReturn(Optional.of(conta));
+        when(encerramentoRepository.findByEmpresaIdAndCompetencia(1L, YearMonth.of(2026, 3)))
+                .thenReturn(Optional.of(encerramento));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                service.cancelar("uuid-empresa-1", "conta-2")
+        );
+
+        assertTrue(ex.getMessage().contains("período está encerrado"));
+        assertEquals("PENDENTE", conta.getStatus());
+    }
+
+    @Test
+    void devePermitirCancelarNfQuandoPeriodoEstiverAbertoEEstornarFaturamento() {
+        ContaReceber conta = new ContaReceber();
+        conta.setId("conta-3");
+        conta.setEmpresaId("uuid-empresa-1");
+        conta.setDataEmissao(LocalDate.of(2026, 5, 20));
+        conta.setValorTotal(new BigDecimal("800.00"));
+        conta.setStatus("PENDENTE");
+        conta.setXmlChaveAcesso("35260112345678000199550010000001234567890300");
+
+        FaturamentoMensal fatExistente = new FaturamentoMensal();
+        fatExistente.setId(20L);
+        fatExistente.setEmpresa(empresa);
+        fatExistente.setCompetencia(YearMonth.of(2026, 5));
+        fatExistente.setValor(new BigDecimal("2000.00"));
+
+        when(repository.findById("conta-3")).thenReturn(Optional.of(conta));
+        when(encerramentoRepository.findByEmpresaIdAndCompetencia(1L, YearMonth.of(2026, 5)))
+                .thenReturn(Optional.empty());
+        when(repository.findByEmpresaIdIn(anyList(), any())).thenReturn(
+                new org.springframework.data.domain.PageImpl<>(List.of(conta))
+        );
+        when(faturamentoRepository.findByEmpresaIdAndCompetencia(1L, YearMonth.of(2026, 5)))
+                .thenReturn(new ArrayList<>(List.of(fatExistente)));
+
+        ContaReceber cancelada = service.cancelarNf("uuid-empresa-1", "conta-3");
+
+        assertEquals("CANCELADO", cancelada.getStatus());
+        assertEquals(new BigDecimal("1200.00"), fatExistente.getValor());
+        verify(faturamentoRepository).save(fatExistente);
+    }
 }

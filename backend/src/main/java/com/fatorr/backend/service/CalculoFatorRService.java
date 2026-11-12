@@ -296,6 +296,14 @@ public class CalculoFatorRService {
                 .orElse(false);
     }
 
+    public List<String> listarCompetenciasEncerradas(Long empresaId) {
+        return encerramentoRepository.findByEmpresaIdAndEncerradoTrue(empresaId)
+                .stream()
+                .map(e -> e.getCompetencia().toString())
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public void encerrarCompetencia(Long empresaId, YearMonth competencia) {
         Empresa empresa = empresaRepository.findById(empresaId)
@@ -306,11 +314,11 @@ public class CalculoFatorRService {
         LocalDate inicio = competencia.atDay(1);
         LocalDate fim = competencia.atEndOfMonth();
 
-        // 1. Apurar faturamento dos XMLs da competência (origem = 'IMPORTACAO_XML' e status != 'NF_CANCELADA')
+        // 1. Apurar faturamento dos XMLs da competência (origem = 'IMPORTACAO_XML' e status não cancelado)
         List<ContaReceber> contas = contaReceberRepository.findByEmpresaIdInAndDataEmissaoBetween(empresaIds, inicio, fim);
         BigDecimal faturamentoApurado = contas.stream()
                 .filter(c -> "IMPORTACAO_XML".equalsIgnoreCase(c.getOrigem()))
-                .filter(c -> !"NF_CANCELADA".equalsIgnoreCase(c.getStatus()))
+                .filter(c -> !"NF_CANCELADA".equalsIgnoreCase(c.getStatus()) && !"CANCELADO".equalsIgnoreCase(c.getStatus()))
                 .map(ContaReceber::getValorTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 

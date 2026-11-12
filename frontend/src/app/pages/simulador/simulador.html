@@ -166,20 +166,27 @@
                 </span>
               </td>
               <td class="text-center">
-                <button
-                  *ngIf="!item.encerrado"
-                  class="btn btn-secondary btn-xs"
-                  (click)="encerrarCompetencia(item.competencia)"
-                  title="Encerrar competência e travar valores apurados">
-                  Encerrar Mês
-                </button>
-                <button
-                  *ngIf="item.encerrado"
-                  class="btn btn-outline btn-xs"
-                  (click)="reabrirCompetencia(item.competencia)"
-                  title="Reabrir competência para permitir alterações">
-                  Reabrir
-                </button>
+                <ng-container *ngIf="isContador; else exclusivoContadorTpl">
+                  <button
+                    *ngIf="!item.encerrado"
+                    class="btn btn-secondary btn-xs"
+                    (click)="encerrarCompetencia(item.competencia)"
+                    title="Encerrar competência e travar valores apurados">
+                    Encerrar Mês
+                  </button>
+                  <button
+                    *ngIf="item.encerrado"
+                    class="btn btn-outline btn-xs"
+                    (click)="reabrirCompetencia(item.competencia)"
+                    title="Reabrir competência para permitir alterações">
+                    Reabrir
+                  </button>
+                </ng-container>
+                <ng-template #exclusivoContadorTpl>
+                  <span class="badge-exclusivo-contador" title="Somente o contador responsável possui permissão para encerrar ou reabrir períodos.">
+                    🔒 Exclusivo Contador
+                  </span>
+                </ng-template>
               </td>
             </tr>
           </tbody>

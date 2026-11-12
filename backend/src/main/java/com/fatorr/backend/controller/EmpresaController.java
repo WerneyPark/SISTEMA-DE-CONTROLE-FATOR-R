@@ -34,22 +34,7 @@ public class EmpresaController {
             @RequestParam(required = false) Long usuarioId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        Usuario usuario = null;
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7).trim();
-            if (jwtUtils.validateToken(token)) {
-                String uuidId = jwtUtils.extractUuidId(token);
-                if (uuidId != null) {
-                    usuario = authService.buscarUsuarioPorUuid(uuidId).orElse(null);
-                }
-                if (usuario == null) {
-                    String cpf = jwtUtils.extractCpf(token);
-                    if (cpf != null) {
-                        usuario = usuarioRepository.findByCpf(cpf).orElse(null);
-                    }
-                }
-            }
-        }
+        Usuario usuario = extrairUsuarioAutenticado(authHeader);
 
         if (usuario == null && usuarioId != null) {
             usuario = usuarioRepository.findById(usuarioId).orElse(null);
@@ -75,23 +60,7 @@ public class EmpresaController {
             @RequestBody AuthService.CriarEmpresaRequest request,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            Usuario usuario = null;
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7).trim();
-                if (jwtUtils.validateToken(token)) {
-                    String uuidId = jwtUtils.extractUuidId(token);
-                    if (uuidId != null) {
-                        usuario = authService.buscarUsuarioPorUuid(uuidId).orElse(null);
-                    }
-                    if (usuario == null) {
-                        String cpf = jwtUtils.extractCpf(token);
-                        if (cpf != null) {
-                            usuario = usuarioRepository.findByCpf(cpf).orElse(null);
-                        }
-                    }
-                }
-            }
-
+            Usuario usuario = extrairUsuarioAutenticado(authHeader);
             Empresa criada = authService.criarEmpresaComVinculo(request, usuario);
             return ResponseEntity.ok(criada);
         } catch (IllegalArgumentException e) {
@@ -163,11 +132,22 @@ public class EmpresaController {
         return ResponseEntity.ok(resultado);
     }
 
+    @GetMapping("/{id}/competencias-encerradas")
+    public ResponseEntity<List<String>> listarCompetenciasEncerradas(@PathVariable Long id) {
+        return ResponseEntity.ok(calculoFatorRService.listarCompetenciasEncerradas(id));
+    }
+
     @PostMapping("/{id}/competencias/{competencia}/encerrar")
     public ResponseEntity<?> encerrarCompetencia(
             @PathVariable Long id,
-            @PathVariable String competencia) {
+            @PathVariable String competencia,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
+            Usuario usuario = extrairUsuarioAutenticado(authHeader);
+            if (!isContador(usuario)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(java.util.Map.of("erro", "Apenas o contador responsável possui permissão para encerrar o período."));
+            }
             YearMonth ym = YearMonth.parse(competencia);
             calculoFatorRService.encerrarCompetencia(id, ym);
             return ResponseEntity.ok(java.util.Map.of("mensagem", "Competência " + competencia + " encerrada com sucesso."));
@@ -179,14 +159,45 @@ public class EmpresaController {
     @PostMapping("/{id}/competencias/{competencia}/reabrir")
     public ResponseEntity<?> reabrirCompetencia(
             @PathVariable Long id,
-            @PathVariable String competencia) {
+            @PathVariable String competencia,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
+            Usuario usuario = extrairUsuarioAutenticado(authHeader);
+            if (!isContador(usuario)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(java.util.Map.of("erro", "Apenas o contador responsável possui permissão para reabrir o período."));
+            }
             YearMonth ym = YearMonth.parse(competencia);
             calculoFatorRService.reabrirCompetencia(id, ym);
             return ResponseEntity.ok(java.util.Map.of("mensagem", "Competência " + competencia + " reaberta com sucesso."));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage()));
         }
+    }
+
+    private Usuario extrairUsuarioAutenticado(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7).trim();
+            if (jwtUtils.validateToken(token)) {
+                String uuidId = jwtUtils.extractUuidId(token);
+                if (uuidId != null) {
+                    Usuario u = authService.buscarUsuarioPorUuid(uuidId).orElse(null);
+                    if (u != null) return u;
+                }
+                String cpf = jwtUtils.extractCpf(token);
+                if (cpf != null) {
+                    return usuarioRepository.findByCpf(cpf).orElse(null);
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isContador(Usuario usuario) {
+        return usuario != null && (
+                usuario.getTipoPerfil() == com.fatorr.backend.domain.TipoPerfil.CONTABILISTA ||
+                usuario.getTipo() == com.fatorr.backend.domain.TipoUsuario.ADMINISTRADOR_CONTABIL
+        );
     }
 
     @PostMapping("/{id}/dados-simulacao")

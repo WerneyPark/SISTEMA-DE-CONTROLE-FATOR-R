@@ -45,6 +45,10 @@ export class FatorRService {
     return this.http.post<{ mensagem: string }>(`${this.empresasUrl}/${empresaId}/competencias/${competencia}/reabrir`, {});
   }
 
+  listarCompetenciasEncerradas(empresaId: number): Observable<string[]> {
+    return this.http.get<string[]>(`${this.empresasUrl}/${empresaId}/competencias-encerradas`);
+  }
+
   salvarDadosSimulacao(empresaId: number, dto: { competencia: string; valorFaturamento?: number; valorFolha?: number }): Observable<{ mensagem: string }> {
     return this.http.post<{ mensagem: string }>(`${this.empresasUrl}/${empresaId}/dados-simulacao`, dto);
   }

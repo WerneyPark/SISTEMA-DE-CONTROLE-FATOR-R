@@ -66,33 +66,49 @@ public class ContaReceberController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ContaReceber> atualizar(
+    public ResponseEntity<?> atualizar(
             @PathVariable String id,
             @RequestParam String empresaId,
             @RequestBody ContaReceber conta) {
-        return ResponseEntity.ok(service.atualizar(empresaId, id, conta));
+        try {
+            return ResponseEntity.ok(service.atualizar(empresaId, id, conta));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage(), "message", e.getMessage()));
+        }
     }
 
     @PostMapping("/{id}/baixar")
-    public ResponseEntity<ContaReceber> baixar(
+    public ResponseEntity<?> baixar(
             @PathVariable String id,
             @RequestParam String empresaId) {
-        return ResponseEntity.ok(service.baixar(empresaId, id));
+        try {
+            return ResponseEntity.ok(service.baixar(empresaId, id));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage(), "message", e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancelar(
+    public ResponseEntity<?> cancelar(
             @PathVariable String id,
             @RequestParam String empresaId) {
-        service.cancelar(empresaId, id);
-        return ResponseEntity.noContent().build();
+        try {
+            service.cancelar(empresaId, id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage(), "message", e.getMessage()));
+        }
     }
 
     @PostMapping("/{id}/cancelar-nf")
-    public ResponseEntity<ContaReceber> cancelarNf(
+    public ResponseEntity<?> cancelarNf(
             @PathVariable String id,
             @RequestParam String empresaId) {
-        return ResponseEntity.ok(service.cancelarNf(empresaId, id));
+        try {
+            return ResponseEntity.ok(service.cancelarNf(empresaId, id));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage(), "message", e.getMessage()));
+        }
     }
 
     @PostMapping("/preview-xml")

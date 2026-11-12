@@ -8,6 +8,7 @@ import {
   DadosNotaFiscalDTO,
   ItemPreviewXmlLoteDTO
 } from '../../services/conta-receber.service';
+import { AuthService } from '../../services/auth.service';
 import { Empresa, SimulacaoTributaria, ProjecaoCenario, FaturamentoHistorico } from '../../models/models';
 import { Subscription } from 'rxjs';
 
@@ -78,8 +79,13 @@ export class SimuladorComponent implements OnInit, OnDestroy {
   constructor(
     private fatorRService: FatorRService,
     private empresaContext: EmpresaContextService,
-    private contaReceberService: ContaReceberService
+    private contaReceberService: ContaReceberService,
+    private authService: AuthService
   ) {}
+
+  get isContador(): boolean {
+    return this.authService.isAdmin();
+  }
 
   ngOnInit(): void {
     this.subscription = this.empresaContext.empresaSelecionada$.subscribe(empresa => {
@@ -151,6 +157,10 @@ export class SimuladorComponent implements OnInit, OnDestroy {
 
   encerrarCompetencia(comp: string): void {
     if (!this.empresaSelecionada?.id) return;
+    if (!this.isContador) {
+      this.erro = 'Apenas o contador responsável possui permissão para encerrar o período.';
+      return;
+    }
     if (!confirm(`Deseja realmente encerrar a competência ${comp}? Os valores para este mês serão consolidados com base nos arquivos de importação (XML e eSocial) e novas alterações manuais serão bloqueadas.`)) {
       return;
     }
@@ -173,6 +183,10 @@ export class SimuladorComponent implements OnInit, OnDestroy {
 
   reabrirCompetencia(comp: string): void {
     if (!this.empresaSelecionada?.id) return;
+    if (!this.isContador) {
+      this.erro = 'Apenas o contador responsável possui permissão para reabrir o período.';
+      return;
+    }
     if (!confirm(`Deseja reabrir a competência ${comp}? O mês voltará a permitir novos lançamentos e ajustes.`)) {
       return;
     }

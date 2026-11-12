@@ -111,19 +111,25 @@
                   ✓ Receber
                 </button>
                 <button
-                  *ngIf="conta.status === 'PENDENTE'"
+                  *ngIf="conta.status === 'PENDENTE' && !isPeriodoEncerrado(conta)"
                   class="btn btn-sm btn-danger"
                   title="Cancelar Título"
                   (click)="cancelarConta(conta)">
                   ✕ Cancelar
                 </button>
                 <button
-                  *ngIf="conta.origem === 'IMPORTACAO_XML' && conta.status !== 'CANCELADO' && conta.status !== 'NF_CANCELADA'"
+                  *ngIf="conta.origem === 'IMPORTACAO_XML' && conta.status !== 'CANCELADO' && conta.status !== 'NF_CANCELADA' && !isPeriodoEncerrado(conta)"
                   class="btn btn-sm btn-outline-danger"
                   title="Cancelar Nota Fiscal inteira e estornar Faturamento"
                   (click)="cancelarNotaFiscal(conta)">
                   Cancelar NF
                 </button>
+                <span
+                  *ngIf="isPeriodoEncerrado(conta) && conta.status !== 'CANCELADO' && conta.status !== 'NF_CANCELADA'"
+                  class="badge-bloqueado"
+                  title="Período encerrado pelo contador. Exclusão e cancelamento de NF bloqueados para preservar a apuração fiscal.">
+                  🔒 Período Fechado
+                </span>
               </div>
             </td>
           </tr>

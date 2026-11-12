@@ -13,6 +13,7 @@ import {
   ContaReceberDTO,
   ClienteFornecedorDTO
 } from '../../shared/types/receivables.types';
+import { FatorRService } from '../../services/fator-r.service';
 
 @Component({
   selector: 'app-contas-a-receber',
@@ -24,10 +25,13 @@ import {
 export class ContasAReceberComponent implements OnInit, OnDestroy {
   private readonly service = inject(ContaReceberService);
   private readonly empresaContext = inject(EmpresaContextService);
+  private readonly fatorRService = inject(FatorRService);
   private readonly destroy$ = new Subject<void>();
 
   empresaId = '';
+  empresaNumericId: number | null = null;
   empresaRazaoSocial = '';
+  competenciasEncerradas = new Set<string>();
 
   contas: ContaReceberDTO[] = [];
   clientes: ClienteFornecedorDTO[] = [];
@@ -78,19 +82,43 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(empresa => {
         this.empresaId = empresa?.uuidId || (empresa?.id ? String(empresa.id) : '');
+        this.empresaNumericId = empresa?.id || null;
         this.empresaRazaoSocial = empresa?.razaoSocial || '';
 
         if (this.empresaId) {
           this.erro = '';
           this.pagina = 0;
+          this.carregarCompetenciasEncerradas();
           this.carregarClientes();
           this.carregarContas();
         } else {
           this.contas = [];
           this.clientes = [];
           this.clientesMap.clear();
+          this.competenciasEncerradas.clear();
         }
       });
+  }
+
+  carregarCompetenciasEncerradas(): void {
+    if (!this.empresaNumericId) {
+      this.competenciasEncerradas.clear();
+      return;
+    }
+    this.fatorRService.listarCompetenciasEncerradas(this.empresaNumericId).subscribe({
+      next: lista => {
+        this.competenciasEncerradas = new Set(lista || []);
+      },
+      error: () => {
+        this.competenciasEncerradas.clear();
+      }
+    });
+  }
+
+  isPeriodoEncerrado(conta: ContaReceberDTO): boolean {
+    if (!conta?.dataEmissao) return false;
+    const comp = String(conta.dataEmissao).substring(0, 7);
+    return this.competenciasEncerradas.has(comp);
   }
 
   ngOnDestroy(): void {
@@ -176,6 +204,10 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
 
   cancelarConta(conta: ContaReceberDTO): void {
     if (!this.empresaId || !conta.id) return;
+    if (this.isPeriodoEncerrado(conta)) {
+      this.erro = 'Não é possível cancelar títulos de uma competência já encerrada pelo contador.';
+      return;
+    }
     if (!confirm(`Deseja cancelar o título ${conta.numeroDocumento || conta.id}?`)) {
       return;
     }
@@ -193,6 +225,10 @@ export class ContasAReceberComponent implements OnInit, OnDestroy {
 
   cancelarNotaFiscal(conta: ContaReceberDTO): void {
     if (!this.empresaId || !conta.id) return;
+    if (this.isPeriodoEncerrado(conta)) {
+      this.erro = 'Não é possível cancelar notas fiscais de uma competência já encerrada pelo contador.';
+      return;
+    }
     const msg = conta.xmlChaveAcesso
       ? `Atenção: Cancelar esta NF cancelará todas as parcelas e abaterá o valor do Faturamento Mensal. Deseja prosseguir?`
       : `Deseja cancelar esta nota fiscal?`;

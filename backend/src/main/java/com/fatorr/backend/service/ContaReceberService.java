@@ -385,8 +385,14 @@ public class ContaReceberService {
 
     public ContaReceber atualizar(String empresaId, String id, ContaReceber dados) {
         ContaReceber existente = buscarPorId(empresaId, id);
+        Empresa empresa = tenantResolverService.resolveEmpresa(empresaId);
 
-        if ("CANCELADO".equals(existente.getStatus())) {
+        validarCompetenciaAberta(empresa, existente.getDataEmissao());
+        if (dados.getDataEmissao() != null && !dados.getDataEmissao().equals(existente.getDataEmissao())) {
+            validarCompetenciaAberta(empresa, dados.getDataEmissao());
+        }
+
+        if ("CANCELADO".equals(existente.getStatus()) || "NF_CANCELADA".equals(existente.getStatus())) {
             throw new IllegalStateException("Não é possível alterar uma conta cancelada");
         }
         if ("PAGO".equals(existente.getStatus())) {
@@ -407,6 +413,9 @@ public class ContaReceberService {
 
     public void cancelar(String empresaId, String id) {
         ContaReceber conta = buscarPorId(empresaId, id);
+        Empresa empresa = tenantResolverService.resolveEmpresa(empresaId);
+
+        validarCompetenciaAberta(empresa, conta.getDataEmissao());
 
         if ("PAGO".equals(conta.getStatus())) {
             throw new IllegalStateException("Não é possível cancelar uma conta já recebida");
@@ -422,33 +431,52 @@ public class ContaReceberService {
         ContaReceber conta = buscarPorId(empresaId, id);
         Empresa empresa = tenantResolverService.resolveEmpresa(empresaId);
 
-        if ("CANCELADO".equals(conta.getStatus())) {
+        validarCompetenciaAberta(empresa, conta.getDataEmissao());
+
+        if ("CANCELADO".equals(conta.getStatus()) || "NF_CANCELADA".equals(conta.getStatus())) {
             throw new IllegalStateException("Esta nota fiscal já está cancelada");
         }
         if ("PAGO".equals(conta.getStatus())) {
             throw new IllegalStateException("Não é possível cancelar uma nota fiscal que já possui parcelas recebidas");
         }
 
+        List<ContaReceber> todasDaNf = new ArrayList<>();
+        if (conta.getXmlChaveAcesso() != null && !conta.getXmlChaveAcesso().isBlank()) {
+            List<String> empresaIds = resolverEmpresaIds(empresaId);
+            todasDaNf = repository.findByEmpresaIdIn(empresaIds, Pageable.unpaged()).getContent()
+                    .stream()
+                    .filter(c -> conta.getXmlChaveAcesso().equals(c.getXmlChaveAcesso()))
+                    .toList();
+
+            boolean possuiParcelaPaga = todasDaNf.stream().anyMatch(c -> "PAGO".equalsIgnoreCase(c.getStatus()));
+            if (possuiParcelaPaga) {
+                throw new IllegalStateException("Não é possível cancelar uma nota fiscal que já possui parcelas recebidas");
+            }
+        }
+
         // Subtrai o valor do FaturamentoMensal se existir
         if (faturamentoRepository != null && conta.getDataEmissao() != null) {
             YearMonth competencia = YearMonth.from(conta.getDataEmissao());
+            BigDecimal valorSubtrair = conta.getValorTotal();
+
+            if (!todasDaNf.isEmpty()) {
+                valorSubtrair = todasDaNf.stream()
+                        .filter(c -> !"CANCELADO".equalsIgnoreCase(c.getStatus()) && !"NF_CANCELADA".equalsIgnoreCase(c.getStatus()))
+                        .map(ContaReceber::getValorTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+            }
+
             List<FaturamentoMensal> existentes = faturamentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia);
-            if (!existentes.isEmpty()) {
+            if (!existentes.isEmpty() && valorSubtrair != null && valorSubtrair.compareTo(BigDecimal.ZERO) > 0) {
                 FaturamentoMensal fat = existentes.get(0);
-                BigDecimal novoValor = fat.getValor().subtract(conta.getValorTotal());
+                BigDecimal novoValor = fat.getValor().subtract(valorSubtrair);
                 fat.setValor(novoValor.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : novoValor);
                 faturamentoRepository.save(fat);
             }
         }
 
         // Cancela todas as parcelas originadas da mesma NF (mesma chave de acesso)
-        if (conta.getXmlChaveAcesso() != null && !conta.getXmlChaveAcesso().isBlank()) {
-            List<String> empresaIds = resolverEmpresaIds(empresaId);
-            List<ContaReceber> todasDaNf = repository.findByEmpresaIdIn(empresaIds, Pageable.unpaged()).getContent()
-                    .stream()
-                    .filter(c -> conta.getXmlChaveAcesso().equals(c.getXmlChaveAcesso()))
-                    .toList();
-
+        if (!todasDaNf.isEmpty()) {
             for (ContaReceber c : todasDaNf) {
                 c.setStatus("CANCELADO");
                 c.setUpdatedAt(LocalDateTime.now());
@@ -489,6 +517,18 @@ public class ContaReceberService {
             clientes = clienteRepository.findByEmpresaId(String.valueOf(empresa.getId()));
         }
         return clientes;
+    }
+
+    private void validarCompetenciaAberta(Empresa empresa, LocalDate dataEmissao) {
+        if (dataEmissao != null) {
+            YearMonth competencia = YearMonth.from(dataEmissao);
+            boolean encerrado = encerramentoRepository.findByEmpresaIdAndCompetencia(empresa.getId(), competencia)
+                    .map(EncerramentoCompetencia::isEncerrado).orElse(false);
+            if (encerrado) {
+                throw new IllegalStateException("Não é possível alterar ou cancelar notas fiscais da competência "
+                        + competencia + " pois o período está encerrado. Solicite ao contador a reabertura do período.");
+            }
+        }
     }
 
     private void validarEmitente(Empresa empresa, LeitorXmlNfeService.DadosNotaFiscal nota) {
