@@ -166,17 +166,23 @@ O banco de dados relacional (PostgreSQL) é composto pelas seguintes tabelas est
 
 ### Pré-requisitos
 - [Git](https://git-scm.com/) (v2.x+)
-- [Docker & Docker Compose](https://www.docker.com/)
-- [Java Development Kit (JDK 21)](https://adoptium.net/)
-- [Node.js (v20.x LTS)](https://nodejs.org/) & `npm` (v10.x+)
+- [Docker & Docker Compose](https://www.docker.com/) (v2.x+)
+- [Java Development Kit (JDK 21 LTS)](https://adoptium.net/)
+- [Node.js (v20.x LTS - mínimo v20.19 para Angular 21)](https://nodejs.org/) & `npm` (v10.x+)
+  - *(Dica: use [NVM](https://github.com/nvm-sh/nvm) para alternar facilmente de versão)*
 
 ---
 
 ### Passo 1: Subir o Banco de Dados (PostgreSQL)
 ```bash
+# Docker Compose V2 (padrão recomendado)
+docker compose up -d
+
+# Ou sintaxe legada
 docker-compose up -d
 ```
-> O container `fatorr_db` inicializará na porta `5432` com banco `fatorr`, usuário `postgres` e senha `admin`.
+> O container `fatorr_db` inicializará na porta `5432` com banco `fatorr`, usuário `postgres` e senha `admin`.  
+> *Atenção:* Certifique-se de que a porta `5432` não esteja sendo ocupada por outra instância local ou container do PostgreSQL antes de subir.
 
 ---
 
@@ -187,7 +193,8 @@ cd backend
 # Windows
 .\mvnw.cmd spring-boot:run
 
-# Linux / macOS
+# Linux / macOS (garanta permissão de execução do wrapper na primeira vez)
+chmod +x mvnw
 ./mvnw spring-boot:run
 ```
 > A API estará disponível em: **`http://localhost:8080`**.  
@@ -199,6 +206,10 @@ cd backend
 Abra outro terminal:
 ```bash
 cd frontend
+
+# Se utilizar NVM, ative a versão LTS configurada no .nvmrc:
+nvm use 20
+
 npm install
 npm start
 ```
@@ -230,6 +241,7 @@ cd backend
 .\mvnw.cmd test
 
 # Linux / macOS
+chmod +x mvnw
 ./mvnw test
 ```
 
@@ -237,6 +249,9 @@ cd backend
 Executa a suíte de testes de validação do CNPJ alfanumérico, formatação monetária, manipulação de datas e contratos de folha e relatórios:
 ```bash
 cd frontend
+
+# Ativar Node 20 caso use NVM
+nvm use 20
 
 # Executar testes uma única vez
 npx vitest run
@@ -248,6 +263,7 @@ npm test
 ### Build de Produção do Frontend
 ```bash
 cd frontend
+nvm use 20
 npm run build
 ```
 
